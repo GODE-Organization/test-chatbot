@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
-import { join } from 'path';
-import { logger } from '../utils/logger';
+import { join, dirname } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { logger } from '../utils/logger.js';
 
 let db: Database.Database | null = null;
 
@@ -13,11 +14,9 @@ export const connectDatabase = (): Database.Database => {
     const dbPath = process.env['DATABASE_PATH'] || join(process.cwd(), 'data', 'bot.db');
     
     // Crear directorio si no existe
-    const fs = require('fs');
-    const path = require('path');
-    const dir = path.dirname(dbPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    const dir = dirname(dbPath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
     }
 
     db = new Database(dbPath);
@@ -86,7 +85,7 @@ const createTables = (): void => {
       )
     `);
 
-    logger.database.info('Tablas creadas correctamente');
+    logger.database.connect('Tablas creadas correctamente');
   } catch (error) {
     logger.database.error('Error al crear tablas:', error);
     throw error;
@@ -104,7 +103,7 @@ export const closeDatabase = (): void => {
   if (db) {
     db.close();
     db = null;
-    logger.database.info('Conexión a la base de datos cerrada');
+    logger.database.connect('Conexión a la base de datos cerrada');
   }
 };
 

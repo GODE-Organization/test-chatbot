@@ -18,7 +18,13 @@ export async function handleTextMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        text: text,
+        message_type: 'text'
+      })
     }
 
     // Procesar diferentes tipos de mensajes
@@ -87,7 +93,12 @@ export async function handlePhotoMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'photo'
+      })
     }
 
     await ctx.reply('📸 ¡Gracias por la foto! ¿Hay algo específico que quieras hacer con ella?')
@@ -114,7 +125,12 @@ export async function handleDocumentMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'document'
+      })
     }
 
     const document = ctx.message.document
@@ -145,7 +161,12 @@ export async function handleStickerMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'sticker'
+      })
     }
 
     const sticker = ctx.message.sticker
@@ -175,7 +196,12 @@ export async function handleVoiceMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'voice'
+      })
     }
 
     const voice = ctx.message.voice
@@ -205,7 +231,12 @@ export async function handleLocationMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'location'
+      })
     }
 
     const location = ctx.message.location
@@ -236,7 +267,12 @@ export async function handleContactMessage(ctx: BotContext) {
 
     // Guardar mensaje en la base de datos
     if (chatId) {
-      await messageModel.saveMessage(ctx.message, userId, chatId)
+      await messageModel.saveMessage({
+        telegram_id: ctx.message.message_id,
+        user_id: userId,
+        chat_id: chatId,
+        message_type: 'contact'
+      })
     }
 
     const contact = ctx.message.contact

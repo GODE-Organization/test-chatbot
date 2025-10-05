@@ -71,6 +71,23 @@ export class UserModel {
       };
     }
   }
+
+  updateUserState(telegramId: number, state: string): DatabaseResponse<any> {
+    try {
+      const stmt = this.db.prepare('UPDATE users SET settings = json_set(settings, "$.state", ?), updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?');
+      const result = stmt.run(state, telegramId);
+      
+      return {
+        success: true,
+        data: { changes: result.changes }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
 }
 
 export class ChatModel {
