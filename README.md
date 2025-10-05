@@ -34,7 +34,7 @@ src/
 1. **Clona el repositorio**
    ```bash
    git clone <url-del-repositorio>
-   cd telegram-chatbot
+   cd test-chatbot
    ```
 
 2. **Instala las dependencias**
