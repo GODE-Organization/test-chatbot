@@ -1,5 +1,5 @@
 import winston from 'winston'
-import { loggingConfig } from '../config/settings'
+import { loggingConfig } from '../config/settings.js'
 
 /**
  * Configuración del logger
