@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
-export declare const connectDatabase: () => Database.Database;
-export declare const getDatabase: () => Database.Database;
-export declare const closeDatabase: () => void;
+import sqlite3 from 'sqlite3';
+export declare const connectDatabase: () => Promise<sqlite3.Database>;
+export declare const getDatabase: () => sqlite3.Database;
+export declare const closeDatabase: () => Promise<void>;
 export declare const isConnected: () => boolean;
 //# sourceMappingURL=connection.d.ts.map

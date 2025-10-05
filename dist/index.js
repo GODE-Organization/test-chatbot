@@ -53,7 +53,7 @@ class TelegramBot {
             TelegramBot.instance = this;
             logger.debug('Configurando base de datos...');
             try {
-                connectDatabase();
+                await connectDatabase();
                 logger.bot.success('Base de datos configurada');
             }
             catch (error) {
@@ -147,7 +147,9 @@ class TelegramBot {
         }
     }
     setupGracefulShutdown() {
-        registerCleanupFunction(closeDatabase);
+        registerCleanupFunction(async () => {
+            await closeDatabase();
+        });
         setupGracefulShutdown();
     }
     async shutdown(code = 0, signal = null) {

@@ -85,7 +85,7 @@ class TelegramBot implements BotInstance {
       // Configurar base de datos
       logger.debug('Configurando base de datos...')
       try {
-        connectDatabase()
+        await connectDatabase()
         logger.bot.success('Base de datos configurada')
       } catch (error) {
         logger.bot.error('Error configurando base de datos:', error)
@@ -187,7 +187,9 @@ class TelegramBot implements BotInstance {
 
   private setupGracefulShutdown(): void {
     // Registrar función de limpieza para la base de datos
-    registerCleanupFunction(closeDatabase)
+    registerCleanupFunction(async () => {
+      await closeDatabase()
+    })
     
     // Configurar manejo de señales
     setupGracefulShutdown()

@@ -24,7 +24,7 @@ export async function authMiddleware(ctx: BotContext, next: () => Promise<void>)
     };
 
     // Registrar/actualizar usuario en la base de datos
-    const userResult = userModel.upsertUser(userData)
+    const userResult = await userModel.upsertUser(userData)
     
     if (userResult.success && userResult.data) {
       // Agregar información del usuario al contexto

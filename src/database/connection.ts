@@ -1,43 +1,58 @@
-import Database from 'better-sqlite3';
+import sqlite3 from 'sqlite3';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { logger } from '../utils/logger.js';
 
-let db: Database.Database | null = null;
+let db: sqlite3.Database | null = null;
 
-export const connectDatabase = (): Database.Database => {
-  if (db) {
-    return db;
-  }
-
-  try {
-    const dbPath = process.env['DATABASE_PATH'] || join(process.cwd(), 'data', 'bot.db');
-    
-    // Crear directorio si no existe
-    const dir = dirname(dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+export const connectDatabase = (): Promise<sqlite3.Database> => {
+  return new Promise((resolve, reject) => {
+    if (db) {
+      resolve(db);
+      return;
     }
 
-    db = new Database(dbPath);
-    
-    // Crear tablas si no existen
-    createTables();
-    
-    logger.database.connect(dbPath);
-    return db;
-  } catch (error) {
-    logger.database.error('Error al conectar con la base de datos:', error);
-    throw error;
-  }
+    try {
+      const dbPath = process.env['DATABASE_PATH'] || join(process.cwd(), 'data', 'bot.db');
+      
+      // Crear directorio si no existe
+      const dir = dirname(dbPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+
+      db = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+          logger.database.error('Error al conectar con la base de datos:', err);
+          reject(err);
+          return;
+        }
+        
+        logger.database.connect(dbPath);
+        
+        // Crear tablas si no existen
+        createTables()
+          .then(() => {
+            logger.database.connect('Tablas creadas correctamente');
+            resolve(db!);
+          })
+          .catch(reject);
+      });
+    } catch (error) {
+      logger.database.error('Error al conectar con la base de datos:', error);
+      reject(error);
+    }
+  });
 };
 
-const createTables = (): void => {
-  if (!db) return;
+const createTables = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('Base de datos no conectada'));
+      return;
+    }
 
-  try {
-    // Tabla de usuarios
-    db.exec(`
+    const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER UNIQUE NOT NULL,
@@ -50,10 +65,9 @@ const createTables = (): void => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
 
-    // Tabla de chats
-    db.exec(`
+    const createChatsTable = `
       CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER UNIQUE NOT NULL,
@@ -67,10 +81,9 @@ const createTables = (): void => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
 
-    // Tabla de mensajes
-    db.exec(`
+    const createMessagesTable = `
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER UNIQUE NOT NULL,
@@ -83,28 +96,60 @@ const createTables = (): void => {
         FOREIGN KEY (user_id) REFERENCES users (id),
         FOREIGN KEY (chat_id) REFERENCES chats (id)
       )
-    `);
+    `;
 
-    logger.database.connect('Tablas creadas correctamente');
-  } catch (error) {
-    logger.database.error('Error al crear tablas:', error);
-    throw error;
-  }
+    db.serialize(() => {
+      db!.exec(createUsersTable, (err) => {
+        if (err) {
+          logger.database.error('Error al crear tabla users:', err);
+          reject(err);
+          return;
+        }
+      });
+
+      db!.exec(createChatsTable, (err) => {
+        if (err) {
+          logger.database.error('Error al crear tabla chats:', err);
+          reject(err);
+          return;
+        }
+      });
+
+      db!.exec(createMessagesTable, (err) => {
+        if (err) {
+          logger.database.error('Error al crear tabla messages:', err);
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+  });
 };
 
-export const getDatabase = (): Database.Database => {
+export const getDatabase = (): sqlite3.Database => {
   if (!db) {
     throw new Error('Base de datos no conectada. Llama a connectDatabase() primero.');
   }
   return db;
 };
 
-export const closeDatabase = (): void => {
-  if (db) {
-    db.close();
-    db = null;
-    logger.database.connect('Conexión a la base de datos cerrada');
-  }
+export const closeDatabase = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (db) {
+      db.close((err) => {
+        if (err) {
+          logger.database.error('Error cerrando base de datos:', err);
+        } else {
+          logger.database.connect('Conexión a la base de datos cerrada');
+        }
+        db = null;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
 };
 
 export const isConnected = (): boolean => {

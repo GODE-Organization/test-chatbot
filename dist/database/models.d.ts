@@ -1,4 +1,4 @@
-import type { DatabaseResponse } from '../types/bot';
+import type { DatabaseResponse } from '../types/bot.js';
 export declare class UserModel {
     private get db();
     upsertUser(userData: {
@@ -9,9 +9,9 @@ export declare class UserModel {
         language_code?: string;
         is_bot?: boolean;
         settings?: string;
-    }): DatabaseResponse<any>;
-    getUserByTelegramId(telegramId: number): DatabaseResponse<any>;
-    updateUserState(telegramId: number, state: string): DatabaseResponse<any>;
+    }): Promise<DatabaseResponse<any>>;
+    getUserByTelegramId(telegramId: number): Promise<DatabaseResponse<any>>;
+    updateUserState(telegramId: number, state: string): Promise<DatabaseResponse<any>>;
 }
 export declare class ChatModel {
     private get db();
@@ -24,11 +24,11 @@ export declare class ChatModel {
         last_name?: string;
         description?: string;
         settings?: string;
-    }): DatabaseResponse<{
+    }): Promise<DatabaseResponse<{
         id: number;
         lastInsertRowid: number;
-    }>;
-    getChatByTelegramId(telegramId: number): DatabaseResponse<any>;
+    }>>;
+    getChatByTelegramId(telegramId: number): Promise<DatabaseResponse<any>>;
 }
 export declare class MessageModel {
     private get db();
@@ -39,11 +39,11 @@ export declare class MessageModel {
         text?: string;
         message_type?: string;
         reply_to_message_id?: number;
-    }): DatabaseResponse<{
+    }): Promise<DatabaseResponse<{
         id: number;
         lastInsertRowid: number;
-    }>;
-    getMessageById(id: number): DatabaseResponse<any>;
+    }>>;
+    getMessageById(id: number): Promise<DatabaseResponse<any>>;
 }
 export declare const userModel: UserModel;
 export declare const chatModel: ChatModel;

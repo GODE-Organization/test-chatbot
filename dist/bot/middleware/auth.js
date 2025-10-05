@@ -13,7 +13,7 @@ export async function authMiddleware(ctx, next) {
             ...(ctx.from.language_code && { language_code: ctx.from.language_code }),
             is_bot: ctx.from.is_bot
         };
-        const userResult = userModel.upsertUser(userData);
+        const userResult = await userModel.upsertUser(userData);
         if (userResult.success && userResult.data) {
             ctx.user = {
                 id: userResult.data.id,
