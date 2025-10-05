@@ -5,4 +5,10 @@ export declare function settingsCommand(ctx: BotContext): Promise<void>;
 export declare function statsCommand(ctx: BotContext): Promise<void>;
 export declare function contactCommand(ctx: BotContext): Promise<void>;
 export declare function resetCommand(ctx: BotContext): Promise<void>;
+export declare function saludoCommand(ctx: BotContext): Promise<void>;
+export declare function testCommand(ctx: BotContext): Promise<void>;
+export declare function tiempoCommand(ctx: BotContext): Promise<void>;
+export declare function dadoCommand(ctx: BotContext): Promise<void>;
+export declare function monedaCommand(ctx: BotContext): Promise<void>;
+export declare function chisteCommand(ctx: BotContext): Promise<void>;
 //# sourceMappingURL=commands.d.ts.map
