@@ -10,7 +10,7 @@ pnpm-lock.yaml
 .env.production.local
 
 # Build output
-dist/
+# dist/
 build/
 
 # Logs
