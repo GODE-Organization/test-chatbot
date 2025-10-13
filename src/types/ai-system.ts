@@ -9,6 +9,7 @@ export type AICommand =
   | 'REGISTER_GUARANTEE'
   | 'CONSULT_SCHEDULE'
   | 'SEND_GEOLOCATION'
+  | 'SEND_IMAGE'
   | 'END_CONVERSATION';
 
 // Parámetros para cada comando
@@ -37,6 +38,11 @@ export interface SendGeolocationParams {
   // No parámetros específicos
 }
 
+export interface SendImageParams {
+  product_id: number;
+  file_id: string;
+}
+
 export interface EndConversationParams {
   reason?: string;
 }
@@ -48,12 +54,19 @@ export type AICommandParams =
   | RegisterGuaranteeParams
   | ConsultScheduleParams
   | SendGeolocationParams
+  | SendImageParams
   | EndConversationParams;
 
 // Estructura de una acción de la IA
 export interface AIAction {
   command: AICommand;
   parameters: AICommandParams;
+}
+
+// Estructura de imagen para respuestas
+export interface ImageData {
+  file_id: string;
+  product?: Product;
 }
 
 // Estructura de respuesta de la IA
@@ -64,6 +77,7 @@ export interface AIResponse {
     inline_keyboard?: any[][];
     keyboard?: any[][];
   };
+  images?: ImageData[];
 }
 
 // Estructura completa del JSON de la IA externa
@@ -203,4 +217,6 @@ export interface MessageProcessingResult {
   session_data?: Record<string, any>;
   action_results?: AICommandResponse[];
   error?: string;
+  is_fallback?: boolean;
+  fallback_reason?: string;
 }

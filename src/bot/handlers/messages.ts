@@ -57,7 +57,7 @@ export async function handlePhotoMessage(ctx: BotContext) {
     if (!ctx.message || !('photo' in ctx.message) || !ctx.user) {
       return
     }
-
+    
     const userId = ctx.user.id
     const chatId = ctx.chat?.id
 

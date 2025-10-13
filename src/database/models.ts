@@ -1,5 +1,6 @@
 import { getDatabase } from './connection.js';
 import type { DatabaseResponse } from '../types/bot.js';
+import { CurrencyConverter } from '../utils/currency-converter.js';
 
 export class UserModel {
   private get db() {
@@ -295,6 +296,40 @@ export class MessageModel {
       }
     });
   }
+
+  getRecentMessages(userId: number, limit: number = 10): Promise<DatabaseResponse<any[]>> {
+    return new Promise((resolve) => {
+      try {
+        const stmt = this.db.prepare(`
+          SELECT text, message_type, created_at 
+          FROM messages 
+          WHERE user_id = ? AND text IS NOT NULL 
+          ORDER BY created_at DESC 
+          LIMIT ?
+        `);
+        
+        stmt.all(userId, limit, (err: any, messages: any[]) => {
+          if (err) {
+            resolve({
+              success: false,
+              error: err.message
+            });
+            return;
+          }
+
+          resolve({
+            success: true,
+            data: messages || []
+          });
+        });
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        });
+      }
+    });
+  }
 }
 
 export class ProductModel {
@@ -381,6 +416,33 @@ export class ProductModel {
     });
   }
 
+  getProductById(id: number): Promise<DatabaseResponse<any>> {
+    return new Promise((resolve) => {
+      try {
+        const stmt = this.db.prepare('SELECT * FROM products WHERE id = ?');
+        stmt.get(id, (err: any, product: any) => {
+          if (err) {
+            resolve({
+              success: false,
+              error: err.message
+            });
+            return;
+          }
+
+          resolve({
+            success: true,
+            data: product || undefined
+          });
+        });
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        });
+      }
+    });
+  }
+
   createProduct(productData: {
     code: string;
     brand: string;
@@ -428,6 +490,153 @@ export class ProductModel {
         });
       }
     });
+  }
+
+  /**
+   * Obtiene todos los productos con conversión de precios a bolívares
+   */
+  async getAllProductsWithBsPrice(filters?: { brand?: string; minPrice?: number; maxPrice?: number; limit?: number }): Promise<DatabaseResponse<any[]>> {
+    try {
+      // Obtener productos de la base de datos
+      const productsResult = await this.getAllProducts(filters);
+      
+      if (!productsResult.success || !productsResult.data) {
+        return productsResult;
+      }
+
+      // Obtener tasa de conversión
+      const conversionResult = await CurrencyConverter.getUsdToBsRate();
+      
+      if (!conversionResult.success || !conversionResult.data) {
+        // Si no se puede obtener la tasa, devolver productos sin conversión
+        return {
+          success: true,
+          data: productsResult.data.map(product => ({
+            ...product,
+            price_bs: null,
+            conversion_rate: null,
+            conversion_error: conversionResult.error
+          }))
+        };
+      }
+
+      // Agregar precios en bolívares a cada producto
+      const productsWithBsPrice = productsResult.data.map(product => ({
+        ...product,
+        price_bs: Math.round(product.price * conversionResult.data!.usdToBsRate * 100) / 100,
+        conversion_rate: conversionResult.data!.usdToBsRate,
+        conversion_last_updated: conversionResult.data!.lastUpdated
+      }));
+
+      return {
+        success: true,
+        data: productsWithBsPrice
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
+
+  /**
+   * Obtiene un producto por código con conversión de precio a bolívares
+   */
+  async getProductByCodeWithBsPrice(code: string): Promise<DatabaseResponse<any>> {
+    try {
+      // Obtener producto de la base de datos
+      const productResult = await this.getProductByCode(code);
+      
+      if (!productResult.success || !productResult.data) {
+        return productResult;
+      }
+
+      // Obtener tasa de conversión
+      const conversionResult = await CurrencyConverter.getUsdToBsRate();
+      
+      if (!conversionResult.success || !conversionResult.data) {
+        // Si no se puede obtener la tasa, devolver producto sin conversión
+        return {
+          success: true,
+          data: {
+            ...productResult.data,
+            price_bs: null,
+            conversion_rate: null,
+            conversion_error: conversionResult.error
+          }
+        };
+      }
+
+      // Agregar precio en bolívares
+      const productWithBsPrice = {
+        ...productResult.data,
+        price_bs: Math.round(productResult.data.price * conversionResult.data!.usdToBsRate * 100) / 100,
+        conversion_rate: conversionResult.data!.usdToBsRate,
+        conversion_last_updated: conversionResult.data!.lastUpdated
+      };
+
+      return {
+        success: true,
+        data: productWithBsPrice
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
+
+  /**
+   * Obtiene un producto por ID con conversión de precio a bolívares
+   */
+  async getProductByIdWithBsPrice(id: number): Promise<DatabaseResponse<any>> {
+    try {
+      // Obtener producto de la base de datos
+      const productResult = await this.getProductById(id);
+      
+      if (!productResult.success || !productResult.data) {
+        return productResult;
+      }
+
+      // Obtener tasa de conversión
+      const conversionResult = await CurrencyConverter.getUsdToBsRate();
+      
+      if (!conversionResult.success || !conversionResult.data) {
+        // Si no se puede obtener la tasa, devolver producto sin conversión
+        return {
+          success: true,
+          data: {
+            ...productResult.data,
+            price_bs: null,
+            conversion_rate: null,
+            conversion_error: conversionResult.error
+          }
+        };
+      }
+
+      // Agregar precio en bolívares
+      const productWithBsPrice = {
+        ...productResult.data,
+        price_bs: Math.round(productResult.data.price * conversionResult.data!.usdToBsRate * 100) / 100,
+        conversion_rate: conversionResult.data!.usdToBsRate,
+        conversion_last_updated: conversionResult.data!.lastUpdated
+      };
+
+      return {
+        success: true,
+        data: productWithBsPrice
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
   }
 }
 

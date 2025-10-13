@@ -87,6 +87,8 @@ export class AIMessageHandler {
         return
       }
 
+      logger.info('Mensaje de foto recibido:', ctx.message)
+
       const userId = ctx.user.id
       const chatId = ctx.chat?.id
 
@@ -151,6 +153,14 @@ export class AIMessageHandler {
         return
       }
 
+      // Detectar si es una consulta de catálogo para mostrar mensaje de carga
+      const isCatalogQuery = this.isCatalogQuery(message)
+      let loadingMessage: any = null
+
+      if (isCatalogQuery) {
+        loadingMessage = await ctx.reply('🔍 Estoy consultando nuestro catálogo de productos... ⏳')
+      }
+
       // Obtener datos de sesión de IA
       const aiSessionData = ctx.session?.ai_session_data || {}
 
@@ -163,8 +173,25 @@ export class AIMessageHandler {
       )
 
       if (!result.success) {
+        // Eliminar mensaje de carga si hay error
+        if (loadingMessage) {
+          try {
+            await ctx.deleteMessage(loadingMessage.message_id)
+          } catch (e) {
+            // Ignorar error si no se puede eliminar
+          }
+        }
         await ctx.reply('❌ Error procesando respuesta de IA.')
         return
+      }
+
+      // Eliminar mensaje de carga antes de enviar respuesta
+      if (loadingMessage) {
+        try {
+          await ctx.deleteMessage(loadingMessage.message_id)
+        } catch (e) {
+          // Ignorar error si no se puede eliminar
+        }
       }
 
       // Enviar respuesta al usuario
@@ -201,7 +228,32 @@ export class AIMessageHandler {
         options.reply_markup = response.reply_markup
       }
 
-      await ctx.reply(response.text, options)
+      // Sanitizar texto para evitar errores de parsing
+      const sanitizedText = this.sanitizeMarkdownText(response.text)
+
+      // Enviar texto principal
+      await ctx.reply(sanitizedText, options)
+
+      // Enviar imágenes si están disponibles
+      if (response.images && Array.isArray(response.images)) {
+        for (const imageData of response.images) {
+          try {
+            logger.info('📸 Enviando imagen de producto:', {
+              fileId: imageData.file_id,
+              productId: imageData.product?.id,
+              productName: imageData.product?.description
+            })
+            
+            await ctx.replyWithPhoto(imageData.file_id, {
+              caption: `📦 ${imageData.product?.description || 'Producto'}`,
+              parse_mode: 'Markdown'
+            })
+          } catch (imageError) {
+            logger.error('Error enviando imagen de producto:', imageError)
+            // No fallar toda la respuesta por una imagen
+          }
+        }
+      }
 
     } catch (error) {
       logger.error('Error enviando respuesta al usuario:', error)
@@ -269,6 +321,32 @@ export class AIMessageHandler {
   }
 
   /**
+   * Detecta si un mensaje es una consulta de catálogo
+   */
+  private isCatalogQuery(message: string): boolean {
+    const catalogKeywords = [
+      'productos',
+      'catálogo',
+      'catalogo',
+      'muestrame',
+      'muéstrame',
+      'tienes',
+      'disponible',
+      'disponibles',
+      'ver',
+      'listar',
+      'mostrar',
+      'que hay',
+      'qué hay',
+      'inventario',
+      'stock'
+    ]
+    
+    const lowerMessage = message.toLowerCase()
+    return catalogKeywords.some(keyword => lowerMessage.includes(keyword))
+  }
+
+  /**
    * Maneja comando de cancelación
    */
   public async handleCancelCommand(ctx: BotContext): Promise<void> {
@@ -297,5 +375,30 @@ export class AIMessageHandler {
       logger.error('Error manejando comando cancel:', error)
       await ctx.reply('❌ Error procesando cancelación.')
     }
+  }
+
+  /**
+   * Sanitiza texto Markdown para evitar errores de parsing
+   */
+  private sanitizeMarkdownText(text: string): string {
+    if (!text) return text
+
+    return text
+      // Corregir caracteres duplicados comunes
+      .replace(/Licuaddora/g, 'Licuadora')
+      .replace(/aacero/g, 'acero')
+      .replace(/Electrodomésticcos/g, 'Electrodomésticos')
+      .replace(/Bossch/g, 'Bosch')
+      .replace(/función pulse/g, 'función pulse')
+      .replace(/cuchillas de accero/g, 'cuchillas de acero')
+      .replace(/pie de accero/g, 'pie de acero')
+      // Limpiar entidades Markdown mal formadas
+      .replace(/\*{3,}/g, '**') // Más de 2 asteriscos seguidos
+      .replace(/_{3,}/g, '__') // Más de 2 guiones bajos seguidos
+      .replace(/\*{1}(?!\*)/g, '') // Asteriscos sueltos sin cerrar
+      .replace(/_{1}(?!_)/g, '') // Guiones bajos sueltos sin cerrar
+      // Limpiar caracteres problemáticos
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // Caracteres de control invisibles
+      .trim()
   }
 }

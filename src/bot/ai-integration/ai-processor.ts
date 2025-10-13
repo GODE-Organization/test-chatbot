@@ -57,6 +57,65 @@ export class AIProcessor {
       for (const action of result.actions || []) {
         const actionResult = await this.executeAIAction(action, userId, chatId)
         actionResults.push(actionResult)
+        
+        // Si es una consulta de catálogo exitosa, enviar los datos a Gemini para formatear
+        if (action.command === 'CONSULT_CATALOG' && actionResult.success && actionResult.data) {
+          logger.info('🛍️ Enviando datos de catálogo a Gemini para formateo:', {
+            productCount: actionResult.data.length,
+            userId
+          })
+          
+          const catalogResult = await this.sendCatalogDataToGemini(
+            actionResult.data,
+            userId,
+            sessionData
+          )
+          
+          if (catalogResult.success) {
+            // Reemplazar la respuesta original con la formateada por Gemini
+            result.response = catalogResult.response!
+            logger.info('✅ Respuesta de catálogo formateada por Gemini:', catalogResult.response)
+            
+            // Procesar acciones de imagen del formateo de catálogo
+            if (catalogResult.actions && catalogResult.actions.length > 0) {
+              for (const imageAction of catalogResult.actions) {
+                const imageResult = await this.executeAIAction(imageAction, userId, chatId)
+                actionResults.push(imageResult)
+                
+                // Agregar imagen a la respuesta si es exitosa
+                if (imageResult.success && imageResult.data) {
+                  if (!result.response.images) {
+                    result.response.images = []
+                  }
+                  result.response.images.push({
+                    file_id: imageResult.data.file_id,
+                    product: imageResult.data.product
+                  })
+                }
+              }
+            }
+          }
+        }
+        
+        // Si es una solicitud de imagen exitosa, preparar para envío
+        if (action.command === 'SEND_IMAGE' && actionResult.success && actionResult.data) {
+          logger.info('📸 Preparando imagen de producto:', {
+            productId: actionResult.data.product?.id,
+            fileId: actionResult.data.file_id,
+            userId
+          })
+          
+          // Agregar información de imagen a la respuesta
+          if (result.response && !result.response.images) {
+            result.response.images = []
+          }
+          if (result.response) {
+            result.response.images!.push({
+              file_id: actionResult.data.file_id,
+              product: actionResult.data.product
+            })
+          }
+        }
       }
 
       const response = result.response || { text: 'Respuesta procesada correctamente', parse_mode: 'Markdown' as const }
@@ -163,6 +222,9 @@ export class AIProcessor {
         case 'SEND_GEOLOCATION':
           return await this.handleSendGeolocation()
         
+        case 'SEND_IMAGE':
+          return await this.handleSendImage(action.parameters)
+        
         case 'END_CONVERSATION':
           return await this.handleEndConversation(userId, action.parameters)
         
@@ -189,7 +251,7 @@ export class AIProcessor {
       const filters = parameters?.filters || {}
       const limit = parameters?.limit || 10
 
-      const result = await productModel.getAllProducts({
+      const result = await productModel.getAllProductsWithBsPrice({
         brand: filters.brand,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
@@ -347,6 +409,46 @@ export class AIProcessor {
   }
 
   /**
+   * Maneja el envío de imagen
+   */
+  private async handleSendImage(parameters: any): Promise<AICommandResponse> {
+    try {
+      const { product_id, file_id } = parameters || {}
+      
+      if (!product_id || !file_id) {
+        return {
+          success: false,
+          error: 'product_id y file_id son requeridos para enviar imagen'
+        }
+      }
+
+      // Obtener información del producto
+      const productResult = await productModel.getProductById(product_id)
+      
+      if (!productResult.success || !productResult.data) {
+        return {
+          success: false,
+          error: 'Producto no encontrado'
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          product: productResult.data,
+          file_id: file_id
+        },
+        message: 'Imagen de producto preparada para envío'
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error manejando imagen'
+      }
+    }
+  }
+
+  /**
    * Maneja el fin de conversación
    */
   private async handleEndConversation(userId: number, parameters: any): Promise<AICommandResponse> {
@@ -428,6 +530,95 @@ export class AIProcessor {
     return {
       state: 'idle',
       last_activity: new Date()
+    }
+  }
+
+  /**
+   * Envía datos de catálogo a Gemini para formateo
+   */
+  private async sendCatalogDataToGemini(
+    products: any[],
+    userId: number,
+    sessionData?: Record<string, any>
+  ): Promise<MessageProcessingResult> {
+    try {
+      // Crear prompt específico para formatear catálogo
+      const catalogPrompt = `
+FORMATEAR CATÁLOGO DE PRODUCTOS:
+
+Tienes que formatear la siguiente lista de productos de Tecno Express de manera atractiva y organizada para el usuario.
+
+PRODUCTOS DISPONIBLES:
+${JSON.stringify(products, null, 2)}
+
+INSTRUCCIONES:
+1. Presenta los productos de forma atractiva con emojis apropiados
+2. Incluye precio en USD y Bs (bolívares venezolanos), descripción y disponibilidad
+3. Organiza por categorías si es posible
+4. Usa formato Markdown para mejor presentación
+5. Si hay productos sin stock, indícalo claramente
+6. Mantén un tono amigable y profesional como Max
+7. Si un producto tiene imagen disponible (image_file_id), puedes usar el comando SEND_IMAGE para mostrarla
+8. Para usar imágenes, incluye en tu respuesta JSON el comando: {"command": "SEND_IMAGE", "parameters": {"product_id": X, "file_id": "file_id_del_producto"}}
+9. SIEMPRE muestra ambos precios: USD y Bs usando el formato "Precio: $X USD / Y Bs"
+10. Si un producto tiene price_bs, úsalo; si no, indica que la conversión no está disponible
+
+FORMATO DE RESPUESTA:
+Responde con JSON en este formato:
+{
+  "response": {
+    "text": "Tu texto formateado aquí",
+    "parse_mode": "Markdown"
+  },
+  "actions": [
+    {"command": "SEND_IMAGE", "parameters": {"product_id": 1, "file_id": "file_id_aqui"}}
+  ]
+}
+
+Ejemplo de texto formateado:
+🛍️ **Nuestros Productos Disponibles**
+
+**🍳 Electrodomésticos de Cocina**
+• **Freidora de Aire** - Precio: $90 USD / 17,572 Bs
+  _Capacidad 5L, 7 programas, 1500W_
+  ✅ Disponible (3 unidades)
+
+• **Cafetera de Goteo** - Precio: $27 USD / 5,272 Bs
+  _1.2L, función mantener caliente_
+  ✅ Disponible (4 unidades)
+      `.trim()
+
+      // Enviar a Gemini para formateo
+      const result = await this.geminiAdapter.sendMessageToAI(
+        catalogPrompt,
+        userId,
+        sessionData
+      )
+
+      if (!result.success) {
+        logger.error('Error formateando catálogo con Gemini:', result.error)
+        return {
+          success: false,
+          error: result.error || 'Error formateando catálogo'
+        }
+      }
+
+      // Procesar acciones de imagen si las hay
+      const imageActions = result.actions?.filter(action => action.command === 'SEND_IMAGE') || []
+      
+      return {
+        success: true,
+        response: result.response || { text: 'Catálogo formateado', parse_mode: 'Markdown' as const },
+        actions: imageActions,
+        session_data: result.session_data || {}
+      }
+
+    } catch (error) {
+      logger.error('Error enviando datos de catálogo a Gemini:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error formateando catálogo'
+      }
     }
   }
 

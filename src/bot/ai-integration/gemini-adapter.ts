@@ -40,7 +40,7 @@ export class GeminiAdapter {
     try {
       logger.debug(`Enviando mensaje a Gemini - Usuario: ${userId}, Mensaje: ${userMessage}`)
 
-      // Procesar mensaje con Gemini
+      // Procesar mensaje con Gemini (ya incluye reintentos internos)
       const aiResponse = await this.geminiService.processMessage(
         userMessage,
         userId,
@@ -49,18 +49,32 @@ export class GeminiAdapter {
 
       logger.debug('Respuesta recibida de Gemini:', aiResponse)
 
+      // Verificar si es una respuesta de fallback
+      const isFallbackResponse = aiResponse.session_data?.['fallback_reason']
+
       return {
         success: true,
         response: aiResponse.response,
         actions: aiResponse.actions,
-        session_data: aiResponse.session_data || {}
+        session_data: aiResponse.session_data || {},
+        is_fallback: !!isFallbackResponse,
+        fallback_reason: isFallbackResponse
       }
 
     } catch (error) {
       logger.error('Error enviando mensaje a Gemini:', error)
+      
+      // Crear respuesta de fallback en caso de error crítico
+      const fallbackResponse = this.createCriticalErrorFallback(error)
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error de comunicación con Gemini'
+        error: error instanceof Error ? error.message : 'Error de comunicación con Gemini',
+        response: fallbackResponse.response,
+        actions: fallbackResponse.actions,
+        session_data: fallbackResponse.session_data || {},
+        is_fallback: true,
+        fallback_reason: 'critical_error'
       }
     }
   }
@@ -89,6 +103,52 @@ export class GeminiAdapter {
    */
   public updateConfig(newConfig: Partial<AISystemConfig>): void {
     this.config = { ...this.config, ...newConfig }
+  }
+
+  /**
+   * Crea una respuesta de fallback para errores críticos
+   */
+  private createCriticalErrorFallback(error: any): AIExternalResponse {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+    
+    logger.warn('Creando respuesta de fallback crítico:', {
+      error: errorMessage,
+      timestamp: new Date().toISOString()
+    })
+
+    return {
+      response: {
+        text: `🚨 *Error del Sistema*\n\nLo siento, estoy experimentando problemas técnicos graves en este momento. Nuestro equipo técnico ha sido notificado.\n\n*¿Qué puedes hacer?*\n• Intenta de nuevo en unos minutos\n• Contacta con nuestro soporte técnico\n• Usa nuestros canales alternativos de atención`,
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: '🔄 Reintentar',
+                callback_data: 'retry_message'
+              },
+              {
+                text: '📞 Soporte Técnico',
+                callback_data: 'contact_support'
+              }
+            ],
+            [
+              {
+                text: '📋 Ver catálogo básico',
+                callback_data: 'show_basic_catalog'
+              }
+            ]
+          ]
+        }
+      },
+      actions: [],
+      session_data: {
+        critical_error: true,
+        error_message: errorMessage,
+        error_timestamp: new Date().toISOString(),
+        fallback_type: 'critical'
+      }
+    }
   }
 }
 

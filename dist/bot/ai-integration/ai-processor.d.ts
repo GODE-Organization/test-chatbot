@@ -13,11 +13,13 @@ export declare class AIProcessor {
     private handleRegisterGuarantee;
     private handleConsultSchedule;
     private handleSendGeolocation;
+    private handleSendImage;
     private handleEndConversation;
     createInitialSession(): UserSessionData;
     updateSessionForGuaranteeFlow(session: UserSessionData): UserSessionData;
     updateSessionForSurvey(session: UserSessionData, conversationId: number): UserSessionData;
     resetSessionToIdle(session: UserSessionData): UserSessionData;
+    private sendCatalogDataToGemini;
     checkGeminiConnectivity(): Promise<boolean>;
 }
 //# sourceMappingURL=ai-processor.d.ts.map

@@ -1,4 +1,5 @@
 import { getDatabase } from './connection.js';
+import { CurrencyConverter } from '../utils/currency-converter.js';
 export class UserModel {
     get db() {
         return getDatabase();
@@ -229,6 +230,38 @@ export class MessageModel {
             }
         });
     }
+    getRecentMessages(userId, limit = 10) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          SELECT text, message_type, created_at 
+          FROM messages 
+          WHERE user_id = ? AND text IS NOT NULL 
+          ORDER BY created_at DESC 
+          LIMIT ?
+        `);
+                stmt.all(userId, limit, (err, messages) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: messages || []
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
 }
 export class ProductModel {
     get db() {
@@ -305,6 +338,32 @@ export class ProductModel {
             }
         });
     }
+    getProductById(id) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM products WHERE id = ?');
+                stmt.get(id, (err, product) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: product || undefined
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
     createProduct(productData) {
         return new Promise((resolve) => {
             try {
@@ -336,6 +395,114 @@ export class ProductModel {
                 });
             }
         });
+    }
+    async getAllProductsWithBsPrice(filters) {
+        try {
+            const productsResult = await this.getAllProducts(filters);
+            if (!productsResult.success || !productsResult.data) {
+                return productsResult;
+            }
+            const conversionResult = await CurrencyConverter.getUsdToBsRate();
+            if (!conversionResult.success || !conversionResult.data) {
+                return {
+                    success: true,
+                    data: productsResult.data.map(product => ({
+                        ...product,
+                        price_bs: null,
+                        conversion_rate: null,
+                        conversion_error: conversionResult.error
+                    }))
+                };
+            }
+            const productsWithBsPrice = productsResult.data.map(product => ({
+                ...product,
+                price_bs: Math.round(product.price * conversionResult.data.usdToBsRate * 100) / 100,
+                conversion_rate: conversionResult.data.usdToBsRate,
+                conversion_last_updated: conversionResult.data.lastUpdated
+            }));
+            return {
+                success: true,
+                data: productsWithBsPrice
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
+    }
+    async getProductByCodeWithBsPrice(code) {
+        try {
+            const productResult = await this.getProductByCode(code);
+            if (!productResult.success || !productResult.data) {
+                return productResult;
+            }
+            const conversionResult = await CurrencyConverter.getUsdToBsRate();
+            if (!conversionResult.success || !conversionResult.data) {
+                return {
+                    success: true,
+                    data: {
+                        ...productResult.data,
+                        price_bs: null,
+                        conversion_rate: null,
+                        conversion_error: conversionResult.error
+                    }
+                };
+            }
+            const productWithBsPrice = {
+                ...productResult.data,
+                price_bs: Math.round(productResult.data.price * conversionResult.data.usdToBsRate * 100) / 100,
+                conversion_rate: conversionResult.data.usdToBsRate,
+                conversion_last_updated: conversionResult.data.lastUpdated
+            };
+            return {
+                success: true,
+                data: productWithBsPrice
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
+    }
+    async getProductByIdWithBsPrice(id) {
+        try {
+            const productResult = await this.getProductById(id);
+            if (!productResult.success || !productResult.data) {
+                return productResult;
+            }
+            const conversionResult = await CurrencyConverter.getUsdToBsRate();
+            if (!conversionResult.success || !conversionResult.data) {
+                return {
+                    success: true,
+                    data: {
+                        ...productResult.data,
+                        price_bs: null,
+                        conversion_rate: null,
+                        conversion_error: conversionResult.error
+                    }
+                };
+            }
+            const productWithBsPrice = {
+                ...productResult.data,
+                price_bs: Math.round(productResult.data.price * conversionResult.data.usdToBsRate * 100) / 100,
+                conversion_rate: conversionResult.data.usdToBsRate,
+                conversion_last_updated: conversionResult.data.lastUpdated
+            };
+            return {
+                success: true,
+                data: productWithBsPrice
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
     }
 }
 export class GuaranteeModel {

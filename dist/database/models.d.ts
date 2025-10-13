@@ -44,6 +44,7 @@ export declare class MessageModel {
         lastInsertRowid: number;
     }>>;
     getMessageById(id: number): Promise<DatabaseResponse<any>>;
+    getRecentMessages(userId: number, limit?: number): Promise<DatabaseResponse<any[]>>;
 }
 export declare class ProductModel {
     private get db();
@@ -54,6 +55,7 @@ export declare class ProductModel {
         limit?: number;
     }): Promise<DatabaseResponse<any[]>>;
     getProductByCode(code: string): Promise<DatabaseResponse<any>>;
+    getProductById(id: number): Promise<DatabaseResponse<any>>;
     createProduct(productData: {
         code: string;
         brand: string;
@@ -65,6 +67,14 @@ export declare class ProductModel {
         id: number;
         lastInsertRowid: number;
     }>>;
+    getAllProductsWithBsPrice(filters?: {
+        brand?: string;
+        minPrice?: number;
+        maxPrice?: number;
+        limit?: number;
+    }): Promise<DatabaseResponse<any[]>>;
+    getProductByCodeWithBsPrice(code: string): Promise<DatabaseResponse<any>>;
+    getProductByIdWithBsPrice(id: number): Promise<DatabaseResponse<any>>;
 }
 export declare class GuaranteeModel {
     private get db();

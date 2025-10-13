@@ -15,6 +15,8 @@ export declare class AIMessageHandler {
     private processAIActions;
     private handleEndConversation;
     initializeUserSession(ctx: BotContext): void;
+    private isCatalogQuery;
     handleCancelCommand(ctx: BotContext): Promise<void>;
+    private sanitizeMarkdownText;
 }
 //# sourceMappingURL=ai-message-handler.d.ts.map

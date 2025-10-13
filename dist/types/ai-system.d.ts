@@ -1,4 +1,4 @@
-export type AICommand = 'CONSULT_CATALOG' | 'CONSULT_GUARANTEES' | 'REGISTER_GUARANTEE' | 'CONSULT_SCHEDULE' | 'SEND_GEOLOCATION' | 'END_CONVERSATION';
+export type AICommand = 'CONSULT_CATALOG' | 'CONSULT_GUARANTEES' | 'REGISTER_GUARANTEE' | 'CONSULT_SCHEDULE' | 'SEND_GEOLOCATION' | 'SEND_IMAGE' | 'END_CONVERSATION';
 export interface ConsultCatalogParams {
     filters?: {
         brand?: string;
@@ -16,13 +16,21 @@ export interface ConsultScheduleParams {
 }
 export interface SendGeolocationParams {
 }
+export interface SendImageParams {
+    product_id: number;
+    file_id: string;
+}
 export interface EndConversationParams {
     reason?: string;
 }
-export type AICommandParams = ConsultCatalogParams | ConsultGuaranteesParams | RegisterGuaranteeParams | ConsultScheduleParams | SendGeolocationParams | EndConversationParams;
+export type AICommandParams = ConsultCatalogParams | ConsultGuaranteesParams | RegisterGuaranteeParams | ConsultScheduleParams | SendGeolocationParams | SendImageParams | EndConversationParams;
 export interface AIAction {
     command: AICommand;
     parameters: AICommandParams;
+}
+export interface ImageData {
+    file_id: string;
+    product?: Product;
 }
 export interface AIResponse {
     text: string;
@@ -31,6 +39,7 @@ export interface AIResponse {
         inline_keyboard?: any[][];
         keyboard?: any[][];
     };
+    images?: ImageData[];
 }
 export interface AIExternalResponse {
     response: AIResponse;
@@ -135,5 +144,7 @@ export interface MessageProcessingResult {
     session_data?: Record<string, any>;
     action_results?: AICommandResponse[];
     error?: string;
+    is_fallback?: boolean;
+    fallback_reason?: string;
 }
 //# sourceMappingURL=ai-system.d.ts.map

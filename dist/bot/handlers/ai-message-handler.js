@@ -61,6 +61,7 @@ export class AIMessageHandler {
             if (!ctx.message || !('photo' in ctx.message) || !ctx.user) {
                 return;
             }
+            logger.info('Mensaje de foto recibido:', ctx.message);
             const userId = ctx.user.id;
             const chatId = ctx.chat?.id;
             if (chatId) {
@@ -105,11 +106,30 @@ export class AIMessageHandler {
             if (!ctx.user) {
                 return;
             }
+            const isCatalogQuery = this.isCatalogQuery(message);
+            let loadingMessage = null;
+            if (isCatalogQuery) {
+                loadingMessage = await ctx.reply('🔍 Estoy consultando nuestro catálogo de productos... ⏳');
+            }
             const aiSessionData = ctx.session?.ai_session_data || {};
             const result = await this.aiProcessor.sendMessageToAI(message, ctx.user.id, ctx.chat?.id || 0, aiSessionData);
             if (!result.success) {
+                if (loadingMessage) {
+                    try {
+                        await ctx.deleteMessage(loadingMessage.message_id);
+                    }
+                    catch (e) {
+                    }
+                }
                 await ctx.reply('❌ Error procesando respuesta de IA.');
                 return;
+            }
+            if (loadingMessage) {
+                try {
+                    await ctx.deleteMessage(loadingMessage.message_id);
+                }
+                catch (e) {
+                }
             }
             await this.sendResponseToUser(ctx, result.response);
             if (result.session_data && ctx.session) {
@@ -131,7 +151,26 @@ export class AIMessageHandler {
             if (response.reply_markup) {
                 options.reply_markup = response.reply_markup;
             }
-            await ctx.reply(response.text, options);
+            const sanitizedText = this.sanitizeMarkdownText(response.text);
+            await ctx.reply(sanitizedText, options);
+            if (response.images && Array.isArray(response.images)) {
+                for (const imageData of response.images) {
+                    try {
+                        logger.info('📸 Enviando imagen de producto:', {
+                            fileId: imageData.file_id,
+                            productId: imageData.product?.id,
+                            productName: imageData.product?.description
+                        });
+                        await ctx.replyWithPhoto(imageData.file_id, {
+                            caption: `📦 ${imageData.product?.description || 'Producto'}`,
+                            parse_mode: 'Markdown'
+                        });
+                    }
+                    catch (imageError) {
+                        logger.error('Error enviando imagen de producto:', imageError);
+                    }
+                }
+            }
         }
         catch (error) {
             logger.error('Error enviando respuesta al usuario:', error);
@@ -177,6 +216,27 @@ export class AIMessageHandler {
             ctx.session = this.aiProcessor.createInitialSession();
         }
     }
+    isCatalogQuery(message) {
+        const catalogKeywords = [
+            'productos',
+            'catálogo',
+            'catalogo',
+            'muestrame',
+            'muéstrame',
+            'tienes',
+            'disponible',
+            'disponibles',
+            'ver',
+            'listar',
+            'mostrar',
+            'que hay',
+            'qué hay',
+            'inventario',
+            'stock'
+        ];
+        const lowerMessage = message.toLowerCase();
+        return catalogKeywords.some(keyword => lowerMessage.includes(keyword));
+    }
     async handleCancelCommand(ctx) {
         try {
             if (!ctx.session) {
@@ -197,6 +257,24 @@ export class AIMessageHandler {
             logger.error('Error manejando comando cancel:', error);
             await ctx.reply('❌ Error procesando cancelación.');
         }
+    }
+    sanitizeMarkdownText(text) {
+        if (!text)
+            return text;
+        return text
+            .replace(/Licuaddora/g, 'Licuadora')
+            .replace(/aacero/g, 'acero')
+            .replace(/Electrodomésticcos/g, 'Electrodomésticos')
+            .replace(/Bossch/g, 'Bosch')
+            .replace(/función pulse/g, 'función pulse')
+            .replace(/cuchillas de accero/g, 'cuchillas de acero')
+            .replace(/pie de accero/g, 'pie de acero')
+            .replace(/\*{3,}/g, '**')
+            .replace(/_{3,}/g, '__')
+            .replace(/\*{1}(?!\*)/g, '')
+            .replace(/_{1}(?!_)/g, '')
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+            .trim();
     }
 }
 //# sourceMappingURL=ai-message-handler.js.map
