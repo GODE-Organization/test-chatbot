@@ -1,18 +1,28 @@
-# Sistema de Integración con IA Externa
+# Sistema de Integración con IA Externa (Google Gemini)
 
-Este documento describe el sistema de integración con IA externa implementado en el chatbot de Telegram.
+Este documento describe el sistema de integración con Google Gemini implementado en el chatbot de Telegram para Tecno Express.
 
 ## Arquitectura General
 
-El sistema está diseñado para recibir mensajes de usuarios, enviarlos a una IA externa, procesar la respuesta JSON y ejecutar las acciones correspondientes.
+El sistema está diseñado para recibir mensajes de usuarios, enviarlos a Google Gemini, procesar la respuesta JSON y ejecutar las acciones correspondientes.
 
 ```
-Usuario → Bot → IA Externa → Bot → Usuario
+Usuario → Bot → Google Gemini → Bot → Usuario
 ```
 
-## Formato JSON de la IA Externa
+## Integración con Google Gemini
 
-La IA externa debe responder con el siguiente formato JSON:
+El sistema utiliza Google Gemini 2.5 Flash como motor de IA principal, con las siguientes características:
+
+- **Modelo**: `gemini-2.5-flash`
+- **Personalidad**: "Max", Asistente Virtual de Tecno Express
+- **Empresa**: Tecno Express (electrodomésticos)
+- **Desarrollado por**: GODE Devs
+- **Ubicación**: Porlamar, Nueva Esparta, Venezuela
+
+## Formato JSON de Respuesta de Gemini
+
+Google Gemini debe responder con el siguiente formato JSON:
 
 ```json
 {
@@ -22,11 +32,17 @@ La IA externa debe responder con el siguiente formato JSON:
     "reply_markup": {
       "inline_keyboard": [...],
       "keyboard": [...]
-    }
+    },
+    "images": [
+      {
+        "file_id": "string",
+        "product": { /* datos del producto */ }
+      }
+    ]
   },
   "actions": [
     {
-      "command": "CONSULT_CATALOG" | "CONSULT_GUARANTEES" | "REGISTER_GUARANTEE" | "CONSULT_SCHEDULE" | "SEND_GEOLOCATION" | "END_CONVERSATION",
+      "command": "CONSULT_CATALOG" | "CONSULT_GUARANTEES" | "REGISTER_GUARANTEE" | "CONSULT_SCHEDULE" | "SEND_GEOLOCATION" | "SEND_IMAGE" | "END_CONVERSATION",
       "parameters": {
         // Parámetros específicos según el comando
       }
@@ -41,14 +57,20 @@ La IA externa debe responder con el siguiente formato JSON:
 ## Comandos Disponibles
 
 ### 1. CONSULT_CATALOG
-Consulta el catálogo de productos.
+Consulta el catálogo de productos con conversión automática de precios USD a Bs.
 
 **Parámetros:**
 - `filters` (opcional): Filtros de búsqueda
   - `brand`: Marca del producto
-  - `minPrice`: Precio mínimo
-  - `maxPrice`: Precio máximo
-- `limit` (opcional): Número máximo de productos a retornar
+  - `minPrice`: Precio mínimo en USD
+  - `maxPrice`: Precio máximo en USD
+- `limit` (opcional): Número máximo de productos a retornar (recomendado: 5-10)
+
+**Características especiales:**
+- Conversión automática USD → Bs (bolívares venezolanos)
+- Formateo inteligente por Gemini
+- Soporte para imágenes de productos
+- Muestra ambos precios: USD y Bs
 
 **Ejemplo:**
 ```json
@@ -86,6 +108,13 @@ Inicia el flujo de registro de garantía.
 
 **Parámetros:** Ninguno
 
+**Flujo secuencial:**
+1. Solicitar número de factura (texto)
+2. Solicitar foto de la factura (imagen)
+3. Solicitar foto del producto (imagen)
+4. Solicitar descripción del problema (texto)
+5. Registrar en base de datos
+
 **Ejemplo:**
 ```json
 {
@@ -120,7 +149,25 @@ Envía la ubicación de la tienda.
 }
 ```
 
-### 6. END_CONVERSATION
+### 6. SEND_IMAGE
+Envía imagen de un producto específico.
+
+**Parámetros:**
+- `product_id` (obligatorio): ID del producto
+- `file_id` (obligatorio): ID del archivo de imagen
+
+**Ejemplo:**
+```json
+{
+  "command": "SEND_IMAGE",
+  "parameters": {
+    "product_id": 123,
+    "file_id": "BAADBAADrwADBREAAYag"
+  }
+}
+```
+
+### 7. END_CONVERSATION
 Termina la conversación y envía encuesta de satisfacción.
 
 **Parámetros:**
@@ -138,19 +185,37 @@ Termina la conversación y envía encuesta de satisfacción.
 
 ## Flujo de Registro de Garantías
 
-Cuando se ejecuta el comando `REGISTER_GUARANTEE`, se inicia un flujo secuencial:
+Cuando se ejecuta el comando `REGISTER_GUARANTEE`, se inicia un flujo secuencial controlado por estados:
 
-1. **Solicitar número de factura** (texto)
-2. **Solicitar foto de la factura** (imagen)
-3. **Solicitar foto del producto** (imagen)
-4. **Solicitar descripción del problema** (texto)
-5. **Registrar en base de datos**
+### Estados del Flujo:
+1. **`waiting_invoice_number`**: Esperando número de factura (texto)
+2. **`waiting_invoice_photo`**: Esperando foto de la factura (imagen)
+3. **`waiting_product_photo`**: Esperando foto del producto (imagen)
+4. **`waiting_description`**: Esperando descripción del problema (texto)
+5. **`completed`**: Flujo completado
 
+### Validaciones:
+- Número de factura: mínimo 3 caracteres
+- Descripción: mínimo 10 caracteres
+- Fotos: se valida que sean imágenes válidas
+
+### Cancelación:
 El usuario puede cancelar en cualquier momento escribiendo `/cancel`.
 
 ## Sistema de Encuestas de Satisfacción
 
 Al finalizar una conversación (por timeout o comando `END_CONVERSATION`), se envía automáticamente una encuesta de satisfacción con botones de calificación del 1 al 5.
+
+### Estados de Encuesta:
+- **`survey_waiting`**: Esperando respuesta de encuesta
+- **`waiting_for_rating`**: Esperando calificación del usuario
+
+### Respuestas Personalizadas:
+- **5 estrellas**: Mensaje de agradecimiento entusiasta
+- **4 estrellas**: Mensaje positivo
+- **3 estrellas**: Mensaje neutral con motivación
+- **2 estrellas**: Mensaje de disculpa con opción de contacto
+- **1 estrella**: Mensaje de disculpa con contacto obligatorio
 
 ## Timeout de Conversaciones
 
@@ -163,13 +228,10 @@ Al finalizar una conversación (por timeout o comando `END_CONVERSATION`), se en
 ### Variables de Entorno
 
 ```env
-# URL del servicio de IA externa
-AI_EXTERNAL_URL=http://localhost:3001/api/ai
+# Google Gemini API Key (obligatorio)
+GEMINI_API_KEY=tu_gemini_api_key_aqui
 
-# API Key para autenticación (opcional)
-AI_API_KEY=tu_api_key_aqui
-
-# Timeout para comunicación con IA (ms)
+# Timeout para comunicación con Gemini (ms)
 AI_TIMEOUT_MS=30000
 
 # Número máximo de reintentos
@@ -177,18 +239,30 @@ AI_MAX_RETRIES=3
 
 # Timeout de conversación (minutos)
 CONVERSATION_TIMEOUT_MINUTES=15
+
+# Configuración de base de datos SQLite
+DATABASE_PATH=./data/bot.db
 ```
 
 ### Estructura de Base de Datos
 
 El sistema utiliza las siguientes tablas:
 
-- `products`: Catálogo de productos
+- `users`: Información de usuarios de Telegram
+- `chats`: Información de chats
+- `messages`: Historial de mensajes
+- `products`: Catálogo de productos con precios USD y Bs
 - `guarantees`: Solicitudes de garantía
 - `schedules`: Horarios de atención
 - `store_config`: Configuración de la tienda
 - `satisfaction_surveys`: Encuestas de satisfacción
 - `conversations`: Conversaciones activas
+
+### Características de la Base de Datos:
+- **SQLite**: Base de datos local
+- **Conversión de moneda**: Automática USD → Bs
+- **Historial de mensajes**: Para contexto de conversación
+- **Sesiones persistentes**: Estados de usuario mantenidos
 
 ## Estados de Sesión
 
@@ -199,15 +273,21 @@ El bot maneja los siguientes estados:
 - `survey_waiting`: Esperando respuesta de encuesta
 - `conversation_ended`: Conversación terminada
 
+### Datos de Sesión:
+- **`state`**: Estado actual del usuario
+- **`flow_data`**: Datos específicos del flujo activo
+- **`ai_session_data`**: Contexto mantenido por Gemini
+- **`last_activity`**: Timestamp de última actividad
+
 ## Ejemplo de Uso
 
-1. Usuario envía: "Quiero ver productos de Samsung"
-2. Bot envía a IA externa: `{"message": "Quiero ver productos de Samsung", "user_id": 12345, "session_data": {}}`
-3. IA responde:
+1. **Usuario envía**: "Quiero ver productos de Samsung"
+2. **Bot procesa**: Envía mensaje a Gemini con contexto de conversación
+3. **Gemini responde**:
 ```json
 {
   "response": {
-    "text": "Aquí tienes nuestros productos Samsung:",
+    "text": "¡Hola! Soy Max, tu Asistente Virtual de Tecno Express. Te ayudo a encontrar productos Samsung.",
     "parse_mode": "Markdown"
   },
   "actions": [
@@ -221,20 +301,45 @@ El bot maneja los siguientes estados:
   ]
 }
 ```
-4. Bot ejecuta la consulta y envía los productos al usuario
+4. **Bot ejecuta**: Consulta catálogo con conversión USD→Bs
+5. **Gemini formatea**: Los datos se envían de vuelta a Gemini para formateo
+6. **Bot responde**: Envía productos formateados con precios en USD y Bs
 
-## Manejo de Errores
+## Características Avanzadas
 
-- Si la IA externa no responde, se muestra un mensaje de error
-- Si hay errores en la base de datos, se registran en los logs
-- Los timeouts se manejan automáticamente
-- Los flujos se pueden cancelar con `/cancel`
+### Conversión de Moneda
+- **Automática**: USD → Bs (bolívares venezolanos)
+- **Tiempo real**: Tasa de cambio actualizada
+- **Formato**: "Precio: $X USD / Y Bs (BCV)"
 
-## Logging
+### Formateo Inteligente
+- **Gemini formatea**: Catálogos con emojis y estructura
+- **Imágenes**: Soporte para mostrar fotos de productos
+- **Markdown**: Formateo rico para mejor presentación
+
+### Manejo de Errores
+- **Reintentos automáticos**: Hasta 3 intentos con backoff exponencial
+- **Fallback inteligente**: Mensajes de error personalizados
+- **Logging detallado**: Todos los eventos registrados
+- **Recuperación**: Los flujos se pueden cancelar con `/cancel`
+
+### Sistema de Logging
 
 Todos los eventos se registran en los logs:
-- Comunicación con IA externa
-- Ejecución de comandos
-- Errores y excepciones
-- Acciones de usuarios
-- Timeouts de conversación
+- **Comunicación con Gemini**: Requests y responses
+- **Ejecución de comandos**: Resultados de acciones
+- **Errores y excepciones**: Stack traces completos
+- **Acciones de usuarios**: Comandos y flujos
+- **Timeouts de conversación**: Fin automático de sesiones
+- **Conversión de moneda**: Tasa de cambio y errores
+- **Formateo de catálogo**: Procesamiento de productos
+
+### Comandos de Usuario
+
+- `/start`: Iniciar bot y mostrar menú principal
+- `/help`: Mostrar ayuda y comandos disponibles
+- `/settings`: Configuración del usuario
+- `/stats`: Estadísticas del bot
+- `/contact`: Información de contacto
+- `/reset`: Reiniciar sesión
+- `/cancel`: Cancelar operación actual
