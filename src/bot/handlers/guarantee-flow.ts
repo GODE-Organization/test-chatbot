@@ -36,23 +36,21 @@ export class GuaranteeFlowHandler {
       ctx.session = this.aiProcessor.updateSessionForGuaranteeFlow(ctx.session)
 
       const message = `
-🔧 **Registro de Garantía**
+🔧 <b>Registro de Garantía</b>
 
-Para registrar una garantía, necesito la siguiente información:
+Por favor, envía el <b>número de factura</b> para comenzar.
 
-1️⃣ **Número de factura** (texto)
-2️⃣ **Foto de la factura** (imagen)
-3️⃣ **Foto del producto** (imagen)
-4️⃣ **Descripción del problema** (texto)
-
-Por favor, envía el **número de factura** para comenzar.
-
-*Puedes cancelar en cualquier momento escribiendo /cancel*
+Puedes cancelar en cualquier momento escribiendo <b>/cancel</b>
       `.trim()
 
-      await ctx.reply(message)
+      await ctx.replyWithHTML(message)
       
       logger.user.action(ctx.user.id, 'Flujo de garantía iniciado')
+      logger.debug('Sesión actualizada para flujo de garantía:', {
+        userId: ctx.user.id,
+        sessionState: ctx.session.state,
+        flowStep: ctx.session.flow_data?.guarantee_flow?.step
+      })
 
     } catch (error) {
       logger.error('Error iniciando flujo de garantía:', error)
@@ -299,7 +297,15 @@ Tu solicitud de garantía ha sido registrada y será revisada por nuestro equipo
    * Verifica si el usuario está en flujo de garantía
    */
   public isInGuaranteeFlow(session: any): boolean {
-    return session?.state === 'guarantee_flow' && 
-           session?.flow_data?.guarantee_flow?.step !== 'completed'
+    const isInFlow = session?.state === 'guarantee_flow' && 
+                     session?.flow_data?.guarantee_flow?.step !== 'completed'
+    
+    logger.debug('Verificando flujo de garantía:', {
+      sessionState: session?.state,
+      flowStep: session?.flow_data?.guarantee_flow?.step,
+      isInFlow
+    })
+    
+    return isInFlow
   }
 }

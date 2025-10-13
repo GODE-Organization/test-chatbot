@@ -10,11 +10,44 @@ export async function sessionMiddleware(ctx, next) {
         const timeoutManager = ConversationTimeoutManager.getInstance();
         const aiProcessor = AIProcessor.getInstance();
         if (!ctx.session) {
-            ctx.session = aiProcessor.createInitialSession();
+            const userResult = await userModel.getUserByTelegramId(ctx.from.id);
+            if (userResult.success && userResult.data && userResult.data.settings) {
+                try {
+                    const settings = JSON.parse(userResult.data.settings);
+                    ctx.session = {
+                        state: settings.state || 'idle',
+                        last_activity: new Date(),
+                        flow_data: settings.flow_data,
+                        ai_session_data: settings.ai_session_data
+                    };
+                    logger.debug('Sesión recuperada desde BD:', {
+                        userId: ctx.from.id,
+                        state: ctx.session.state,
+                        flowData: ctx.session.flow_data
+                    });
+                }
+                catch (parseError) {
+                    ctx.session = aiProcessor.createInitialSession();
+                    logger.debug('Error parseando settings, nueva sesión creada:', {
+                        userId: ctx.from.id,
+                        error: parseError
+                    });
+                }
+            }
+            else {
+                ctx.session = aiProcessor.createInitialSession();
+                logger.debug('Nueva sesión creada:', {
+                    userId: ctx.from.id,
+                    state: ctx.session.state
+                });
+            }
         }
         ctx.session.last_activity = new Date();
         await handleConversationTimeout(ctx, timeoutManager);
-        await userModel.updateUserState(ctx.from.id, ctx.session.state);
+        await userModel.updateUserState(ctx.from.id, ctx.session.state, {
+            flow_data: ctx.session.flow_data ? JSON.stringify(ctx.session.flow_data) : null,
+            ai_session_data: ctx.session.ai_session_data ? JSON.stringify(ctx.session.ai_session_data) : null
+        });
         await next();
         if (ctx.session?.ai_session_data && ctx.user) {
             await saveAISessionData(ctx.user.id, ctx.session.ai_session_data);

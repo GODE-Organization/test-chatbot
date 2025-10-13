@@ -11,7 +11,11 @@ export declare class UserModel {
         settings?: string;
     }): Promise<DatabaseResponse<any>>;
     getUserByTelegramId(telegramId: number): Promise<DatabaseResponse<any>>;
-    updateUserState(telegramId: number, state: string): Promise<DatabaseResponse<any>>;
+    getUserState(telegramId: number): Promise<DatabaseResponse<any>>;
+    updateUserState(telegramId: number, state: string, additionalData?: {
+        flow_data?: string | null;
+        ai_session_data?: string | null;
+    }): Promise<DatabaseResponse<any>>;
 }
 export declare class ChatModel {
     private get db();

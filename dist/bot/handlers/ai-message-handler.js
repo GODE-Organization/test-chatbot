@@ -39,11 +39,29 @@ export class AIMessageHandler {
                     message_type: 'text'
                 });
             }
+            logger.info('🔍 Verificando flujo de garantía en handleTextMessage:', {
+                userId: ctx.user.id,
+                sessionState: ctx.session?.state,
+                flowData: ctx.session?.flow_data,
+                message: text
+            });
             if (this.guaranteeHandler.isInGuaranteeFlow(ctx.session)) {
+                logger.info('✅ Usuario en flujo de garantía, procesando paso:', {
+                    userId: ctx.user.id,
+                    message: text,
+                    currentStep: ctx.session?.flow_data?.guarantee_flow?.step
+                });
                 const processed = await this.guaranteeHandler.processGuaranteeStep(ctx, 'text');
                 if (processed) {
+                    logger.info('✅ Paso de garantía procesado exitosamente');
                     return;
                 }
+                else {
+                    logger.warn('⚠️ Paso de garantía no se procesó correctamente');
+                }
+            }
+            else {
+                logger.info('❌ Usuario NO está en flujo de garantía');
             }
             if (this.surveyHandler.isWaitingForSurvey(ctx.session)) {
                 await ctx.reply('Por favor, selecciona una opción de la encuesta de satisfacción.');
@@ -182,7 +200,17 @@ export class AIMessageHandler {
             for (const action of actions) {
                 switch (action.command) {
                     case 'REGISTER_GUARANTEE':
+                        logger.info('🚀 Ejecutando acción REGISTER_GUARANTEE:', {
+                            userId: ctx.user?.id,
+                            sessionState: ctx.session?.state,
+                            flowData: ctx.session?.flow_data
+                        });
                         await this.guaranteeHandler.startGuaranteeFlow(ctx);
+                        logger.info('✅ Flujo de garantía iniciado:', {
+                            userId: ctx.user?.id,
+                            sessionState: ctx.session?.state,
+                            flowData: ctx.session?.flow_data
+                        });
                         break;
                     case 'END_CONVERSATION':
                         await this.handleEndConversation(ctx);

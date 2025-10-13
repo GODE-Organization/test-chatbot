@@ -93,11 +93,67 @@ export class UserModel {
     });
   }
 
-  updateUserState(telegramId: number, state: string): Promise<DatabaseResponse<any>> {
+  getUserState(telegramId: number): Promise<DatabaseResponse<any>> {
     return new Promise((resolve) => {
       try {
-        const stmt = this.db.prepare('UPDATE users SET settings = json_set(settings, "$.state", ?), updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?');
-        stmt.run(state, telegramId, function(this: any, err: any) {
+        const stmt = this.db.prepare('SELECT settings FROM users WHERE telegram_id = ?');
+        stmt.get(telegramId, (err: any, user: any) => {
+          if (err) {
+            resolve({
+              success: false,
+              error: err.message
+            });
+            return;
+          }
+
+          if (!user) {
+            resolve({
+              success: false,
+              error: 'Usuario no encontrado'
+            });
+            return;
+          }
+
+          const settings = user.settings ? JSON.parse(user.settings) : {};
+          resolve({
+            success: true,
+            data: {
+              state: settings.state || 'idle',
+              flow_data: settings.flow_data,
+              ai_session_data: settings.ai_session_data
+            }
+          });
+        });
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        });
+      }
+    });
+  }
+
+  updateUserState(telegramId: number, state: string, additionalData?: { flow_data?: string | null; ai_session_data?: string | null }): Promise<DatabaseResponse<any>> {
+    return new Promise((resolve) => {
+      try {
+        let query = 'UPDATE users SET settings = json_set(settings, "$.state", ?)';
+        const params: any[] = [state];
+        
+        if (additionalData?.flow_data !== undefined) {
+          query += ', settings = json_set(settings, "$.flow_data", ?)';
+          params.push(additionalData.flow_data || null);
+        }
+        
+        if (additionalData?.ai_session_data !== undefined) {
+          query += ', settings = json_set(settings, "$.ai_session_data", ?)';
+          params.push(additionalData.ai_session_data || null);
+        }
+        
+        query += ', updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?';
+        params.push(telegramId);
+        
+        const stmt = this.db.prepare(query);
+        stmt.run(...params, function(this: any, err: any) {
           if (err) {
             resolve({
               success: false,

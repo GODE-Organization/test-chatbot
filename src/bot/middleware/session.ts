@@ -18,9 +18,58 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
     const timeoutManager = ConversationTimeoutManager.getInstance()
     const aiProcessor = AIProcessor.getInstance()
 
-    // Inicializar sesión si no existe
+    // Recuperar o inicializar sesión
     if (!ctx.session) {
-      ctx.session = aiProcessor.createInitialSession()
+      logger.info('🔍 No hay sesión, recuperando desde BD:', { userId: ctx.from.id })
+      
+      // Intentar recuperar sesión desde la base de datos
+      const userResult = await userModel.getUserByTelegramId(ctx.from.id)
+      logger.info('📊 Resultado de getUserByTelegramId:', {
+        userId: ctx.from.id,
+        success: userResult.success,
+        hasData: !!userResult.data,
+        hasSettings: !!userResult.data?.settings
+      })
+      
+      if (userResult.success && userResult.data && userResult.data.settings) {
+        try {
+          const settings = JSON.parse(userResult.data.settings)
+          logger.info('📋 Settings parseados:', { userId: ctx.from.id, settings })
+          
+          // Crear sesión basada en el estado guardado
+          ctx.session = {
+            state: settings.state || 'idle' as BotFlowState,
+            last_activity: new Date(),
+            flow_data: settings.flow_data,
+            ai_session_data: settings.ai_session_data
+          }
+          logger.info('✅ Sesión recuperada desde BD:', {
+            userId: ctx.from.id,
+            state: ctx.session.state,
+            flowData: ctx.session.flow_data
+          })
+        } catch (parseError) {
+          // Si hay error parseando settings, crear sesión inicial
+          ctx.session = aiProcessor.createInitialSession()
+          logger.warn('⚠️ Error parseando settings, nueva sesión creada:', {
+            userId: ctx.from.id,
+            error: parseError
+          })
+        }
+      } else {
+        // Crear sesión inicial si no existe
+        ctx.session = aiProcessor.createInitialSession()
+        logger.info('🆕 Nueva sesión creada:', {
+          userId: ctx.from.id,
+          state: ctx.session.state
+        })
+      }
+    } else {
+      logger.info('✅ Sesión ya existe:', {
+        userId: ctx.from.id,
+        state: ctx.session.state,
+        flowData: ctx.session.flow_data
+      })
     }
 
     // Actualizar última actividad
@@ -30,7 +79,23 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
     await handleConversationTimeout(ctx, timeoutManager)
 
     // Actualizar estado del usuario en la base de datos
-    await userModel.updateUserState(ctx.from.id, ctx.session.state as UserState)
+    logger.info('💾 Guardando sesión en BD:', {
+      userId: ctx.from.id,
+      state: ctx.session.state,
+      flowData: ctx.session.flow_data,
+      aiSessionData: ctx.session.ai_session_data
+    })
+    
+    const updateResult = await userModel.updateUserState(ctx.from.id, ctx.session.state as UserState, {
+      flow_data: ctx.session.flow_data ? JSON.stringify(ctx.session.flow_data) : null,
+      ai_session_data: ctx.session.ai_session_data ? JSON.stringify(ctx.session.ai_session_data) : null
+    })
+    
+    logger.info('💾 Resultado de guardado en BD:', {
+      userId: ctx.from.id,
+      success: updateResult.success,
+      error: updateResult.error
+    })
 
     await next()
 
