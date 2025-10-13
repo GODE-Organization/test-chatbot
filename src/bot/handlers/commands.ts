@@ -13,11 +13,16 @@ import {
 export async function startCommand(ctx: BotContext) {
   try {
     const welcomeMessage = `
-🃏 ¡Bienvenido al Bot de Telegram!
+🛍️ ¡Bienvenido a nuestro asistente de atención al cliente!
 
-¡Hola! Soy un bot inteligente que puede ayudarte con diversas tareas.
+¡Hola! Soy tu asistente inteligente y estoy aquí para ayudarte con:
 
-Usa el menú de abajo para navegar por las opciones disponibles.
+• Consultas sobre nuestros productos
+• Registro de garantías
+• Información de horarios y ubicación
+• Cualquier pregunta que tengas
+
+Simplemente escribe tu mensaje y te ayudaré de inmediato.
 
 ¿En qué puedo ayudarte hoy?
     `.trim()
@@ -46,23 +51,17 @@ export async function helpCommand(ctx: BotContext) {
 /stats - Ver estadísticas
 /contact - Información de contacto
 /reset - Reiniciar sesión
-
-**Comandos de prueba:**
-/saludo - Saludo aleatorio
-/test - Comando de prueba
-/tiempo - Hora actual
-/dado - Lanzar un dado
-/moneda - Lanzar una moneda
-/chiste - Un chiste aleatorio
+/cancel - Cancelar operación actual
 
 **Funcionalidades:**
-• Interfaz intuitiva con menús
-• Configuración personalizable
-• Estadísticas de uso
-• Soporte multiidioma
-• Comandos de entretenimiento
+• Asistente inteligente con IA
+• Consulta de catálogo de productos
+• Registro de garantías
+• Consulta de horarios
+• Información de ubicación
+• Encuestas de satisfacción
 
-Usa los botones del menú para una mejor experiencia.
+Simplemente escribe tu mensaje y nuestro asistente inteligente te ayudará.
     `.trim()
 
     await ctx.reply(helpMessage, getHelpKeyboard())
@@ -147,8 +146,9 @@ Puedes contactarnos a través de:
 export async function resetCommand(ctx: BotContext) {
   try {
     if (ctx.session) {
-      ctx.session.state = 'idle'
-      ctx.session.data = {}
+      const { AIProcessor } = await import('../ai-integration/ai-processor.js')
+      const aiProcessor = AIProcessor.getInstance()
+      ctx.session = aiProcessor.resetSessionToIdle(ctx.session)
     }
 
     const resetMessage = `
@@ -169,193 +169,18 @@ Usa /start para ver el menú principal.
 }
 
 /**
- * Comando /saludo - Saludo personalizado
+ * Comando /cancel - Cancelar operación actual
  */
-export async function saludoCommand(ctx: BotContext) {
+export async function cancelCommand(ctx: BotContext) {
   try {
-    const saludos = [
-      '¡Hola! 👋 ¡Qué gusto verte por aquí!',
-      '¡Saludos! 😊 ¿Cómo estás hoy?',
-      '¡Hey! 🎉 ¡Espero que tengas un excelente día!',
-      '¡Buenos días! ☀️ ¡Espero que todo vaya genial!',
-      '¡Hola amigo! 🤗 ¡Gracias por usar nuestro bot!',
-      '¡Saludos cordiales! 🌟 ¡Espero que encuentres útil este bot!',
-      '¡Hola! 🚀 ¡Bienvenido a la experiencia del bot!',
-      '¡Hey! 💫 ¡Espero que tengas un día maravilloso!'
-    ]
-
-    const saludoAleatorio = saludos[Math.floor(Math.random() * saludos.length)]
+    const { AIMessageHandler } = await import('./ai-message-handler.js')
+    const aiHandler = AIMessageHandler.getInstance()
     
-    const saludoMessage = `
-${saludoAleatorio}
-
-¿Hay algo específico en lo que pueda ayudarte? 
-Usa /help para ver todos los comandos disponibles.
-    `.trim()
-
-    await ctx.reply(saludoMessage)
+    await aiHandler.handleCancelCommand(ctx)
     
-    logger.user.action(ctx.from?.id || 0, 'Comando /saludo ejecutado')
+    logger.user.action(ctx.from?.id || 0, 'Comando /cancel ejecutado')
   } catch (error) {
-    logger.error('Error en comando saludo:', error)
-    await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
-  }
-}
-
-/**
- * Comando /test - Comando de prueba
- */
-export async function testCommand(ctx: BotContext) {
-  try {
-    const testMessage = `
-🧪 **Comando de Prueba**
-
-¡El bot está funcionando perfectamente! ✅
-
-**Información del sistema:**
-• Bot activo: ✅
-• Base de datos: ✅
-• Logging: ✅
-• Middleware: ✅
-
-**Comandos de prueba disponibles:**
-• /saludo - Saludo aleatorio
-• /tiempo - Hora actual
-• /dado - Lanzar un dado
-• /moneda - Lanzar una moneda
-• /chiste - Un chiste aleatorio
-
-¡Todo funciona correctamente! 🎉
-    `.trim()
-
-    await ctx.reply(testMessage)
-    
-    logger.user.action(ctx.from?.id || 0, 'Comando /test ejecutado')
-  } catch (error) {
-    logger.error('Error en comando test:', error)
-    await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
-  }
-}
-
-/**
- * Comando /tiempo - Mostrar hora actual
- */
-export async function tiempoCommand(ctx: BotContext) {
-  try {
-    const ahora = new Date()
-    const hora = ahora.toLocaleTimeString('es-ES', { 
-      timeZone: 'America/Mexico_City',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-    const fecha = ahora.toLocaleDateString('es-ES', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-
-    const tiempoMessage = `
-🕐 **Hora Actual**
-
-**Hora:** ${hora}
-**Fecha:** ${fecha}
-**Zona horaria:** México (GMT-6)
-
-¡Espero que tengas un excelente día! 😊
-    `.trim()
-
-    await ctx.reply(tiempoMessage)
-    
-    logger.user.action(ctx.from?.id || 0, 'Comando /tiempo ejecutado')
-  } catch (error) {
-    logger.error('Error en comando tiempo:', error)
-    await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
-  }
-}
-
-/**
- * Comando /dado - Lanzar un dado
- */
-export async function dadoCommand(ctx: BotContext) {
-  try {
-    const numero = Math.floor(Math.random() * 6) + 1
-    const emoji = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][numero - 1]
-    
-    const dadoMessage = `
-🎲 **Lanzamiento de Dado**
-
-${emoji} **Resultado: ${numero}**
-
-${numero === 6 ? '¡Suerte! 🍀' : numero === 1 ? '¡Ups! 😅' : '¡Bien! 👍'}
-    `.trim()
-
-    await ctx.reply(dadoMessage)
-    
-    logger.user.action(ctx.from?.id || 0, `Comando /dado ejecutado - Resultado: ${numero}`)
-  } catch (error) {
-    logger.error('Error en comando dado:', error)
-    await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
-  }
-}
-
-/**
- * Comando /moneda - Lanzar una moneda
- */
-export async function monedaCommand(ctx: BotContext) {
-  try {
-    const resultado = Math.random() < 0.5 ? 'cara' : 'cruz'
-    const emoji = resultado === 'cara' ? '🪙' : '🪙'
-    
-    const monedaMessage = `
-${emoji} **Lanzamiento de Moneda**
-
-**Resultado: ${resultado.toUpperCase()}**
-
-${resultado === 'cara' ? '¡Cara! 😊' : '¡Cruz! ⚡'}
-    `.trim()
-
-    await ctx.reply(monedaMessage)
-    
-    logger.user.action(ctx.from?.id || 0, `Comando /moneda ejecutado - Resultado: ${resultado}`)
-  } catch (error) {
-    logger.error('Error en comando moneda:', error)
-    await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
-  }
-}
-
-/**
- * Comando /chiste - Chiste aleatorio
- */
-export async function chisteCommand(ctx: BotContext) {
-  try {
-    const chistes = [
-      '¿Por qué los pájaros vuelan hacia el sur en invierno? ¡Porque caminar es muy lento! 😄',
-      '¿Qué hace un pez cuando se quema? ¡Nada! 🐟',
-      '¿Por qué los elefantes no usan computadoras? ¡Porque tienen miedo del mouse! 🐭',
-      '¿Qué le dice un semáforo a otro? ¡No me mires, me estoy cambiando! 🚦',
-      '¿Por qué los libros de matemáticas están tristes? ¡Porque tienen muchos problemas! 📚',
-      '¿Qué hace una abeja en el gimnasio? ¡Zum-ba! 🐝',
-      '¿Por qué los fantasmas no mienten? ¡Porque se transparentan! 👻',
-      '¿Qué le dice un huevo a otro huevo? ¡Nos vemos en la sartén! 🍳'
-    ]
-
-    const chisteAleatorio = chistes[Math.floor(Math.random() * chistes.length)]
-    
-    const chisteMessage = `
-😄 **Chiste del Día**
-
-${chisteAleatorio}
-
-¡Espero que te haya gustado! 😊
-    `.trim()
-
-    await ctx.reply(chisteMessage)
-    
-    logger.user.action(ctx.from?.id || 0, 'Comando /chiste ejecutado')
-  } catch (error) {
-    logger.error('Error en comando chiste:', error)
+    logger.error('Error en comando cancel:', error)
     await ctx.reply('❌ Ocurrió un error. Por favor, intenta de nuevo.')
   }
 }

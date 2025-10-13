@@ -14,6 +14,7 @@ import { connectDatabase, closeDatabase } from './database/connection.js'
 import { setupMiddleware } from './bot/middleware/index.js'
 import { setupHandlers } from './bot/handlers/index.js'
 import { registerCleanupFunction, setupGracefulShutdown } from './utils/graceful-shutdown.js'
+import { ConversationCleanupService } from './bot/timeout/index.js'
 import type { BotContext } from './types/bot.js'
 import 'dotenv/config'
 
@@ -109,6 +110,17 @@ class TelegramBot implements BotInstance {
         logger.bot.success('Handlers configurados')
       } catch (error) {
         logger.bot.error('Error configurando handlers:', error)
+        throw error
+      }
+
+      // Configurar servicio de limpieza de conversaciones
+      logger.debug('Configurando servicio de limpieza...')
+      try {
+        const cleanupService = ConversationCleanupService.getInstance()
+        cleanupService.startCleanupService(5) // Limpiar cada 5 minutos
+        logger.bot.success('Servicio de limpieza configurado')
+      } catch (error) {
+        logger.bot.error('Error configurando servicio de limpieza:', error)
         throw error
       }
 

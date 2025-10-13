@@ -45,7 +45,89 @@ export declare class MessageModel {
     }>>;
     getMessageById(id: number): Promise<DatabaseResponse<any>>;
 }
+export declare class ProductModel {
+    private get db();
+    getAllProducts(filters?: {
+        brand?: string;
+        minPrice?: number;
+        maxPrice?: number;
+        limit?: number;
+    }): Promise<DatabaseResponse<any[]>>;
+    getProductByCode(code: string): Promise<DatabaseResponse<any>>;
+    createProduct(productData: {
+        code: string;
+        brand: string;
+        image_file_id?: string;
+        price: number;
+        description?: string;
+        available_units?: number;
+    }): Promise<DatabaseResponse<{
+        id: number;
+        lastInsertRowid: number;
+    }>>;
+}
+export declare class GuaranteeModel {
+    private get db();
+    getGuaranteesByUserId(userId: number): Promise<DatabaseResponse<any[]>>;
+    createGuarantee(guaranteeData: {
+        user_id: number;
+        invoice_number: string;
+        invoice_photo_file_id: string;
+        product_photo_file_id: string;
+        description: string;
+    }): Promise<DatabaseResponse<{
+        id: number;
+        lastInsertRowid: number;
+    }>>;
+}
+export declare class ScheduleModel {
+    private get db();
+    getAllSchedules(): Promise<DatabaseResponse<any[]>>;
+}
+export declare class StoreConfigModel {
+    private get db();
+    getStoreConfig(): Promise<DatabaseResponse<any>>;
+    updateStoreConfig(configData: {
+        name: string;
+        address: string;
+        latitude?: number;
+        longitude?: number;
+        phone?: string;
+        email?: string;
+    }): Promise<DatabaseResponse<any>>;
+}
+export declare class SatisfactionSurveyModel {
+    private get db();
+    createSurvey(surveyData: {
+        user_id: number;
+        rating: number;
+        feedback?: string;
+        conversation_id?: number;
+    }): Promise<DatabaseResponse<{
+        id: number;
+        lastInsertRowid: number;
+    }>>;
+}
+export declare class ConversationModel {
+    private get db();
+    createConversation(conversationData: {
+        user_id: number;
+        ai_session_data?: string;
+    }): Promise<DatabaseResponse<{
+        id: number;
+        lastInsertRowid: number;
+    }>>;
+    getActiveConversation(userId: number): Promise<DatabaseResponse<any>>;
+    endConversation(conversationId: number): Promise<DatabaseResponse<any>>;
+    updateConversationData(conversationId: number, aiSessionData: string): Promise<DatabaseResponse<any>>;
+}
 export declare const userModel: UserModel;
 export declare const chatModel: ChatModel;
 export declare const messageModel: MessageModel;
+export declare const productModel: ProductModel;
+export declare const guaranteeModel: GuaranteeModel;
+export declare const scheduleModel: ScheduleModel;
+export declare const storeConfigModel: StoreConfigModel;
+export declare const satisfactionSurveyModel: SatisfactionSurveyModel;
+export declare const conversationModel: ConversationModel;
 //# sourceMappingURL=models.d.ts.map

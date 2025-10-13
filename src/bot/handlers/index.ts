@@ -7,12 +7,7 @@ import {
   statsCommand, 
   contactCommand, 
   resetCommand,
-  saludoCommand,
-  testCommand,
-  tiempoCommand,
-  dadoCommand,
-  monedaCommand,
-  chisteCommand
+  cancelCommand
 } from './commands.js'
 import { 
   handleSettingsCallbacks,
@@ -41,14 +36,7 @@ export async function setupHandlers(bot: Telegraf<BotContext>): Promise<void> {
   bot.command('stats', statsCommand)
   bot.command('contact', contactCommand)
   bot.command('reset', resetCommand)
-  
-  // Comandos de prueba y diversión
-  bot.command('saludo', saludoCommand)
-  bot.command('test', testCommand)
-  bot.command('tiempo', tiempoCommand)
-  bot.command('dado', dadoCommand)
-  bot.command('moneda', monedaCommand)
-  bot.command('chiste', chisteCommand)
+  bot.command('cancel', cancelCommand)
 
   // Callbacks de configuración
   bot.action(/^settings_/, handleSettingsCallbacks)

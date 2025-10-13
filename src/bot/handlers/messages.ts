@@ -33,45 +33,15 @@ export async function handleTextMessage(ctx: BotContext) {
       return
     }
 
-    // Respuestas a mensajes comunes
-    const responses: Record<string, string> = {
-      'hola': '¡Hola! 👋 ¿En qué puedo ayudarte?',
-      'hello': 'Hello! 👋 How can I help you?',
-      'gracias': '¡De nada! 😊 ¿Hay algo más en lo que pueda ayudarte?',
-      'thanks': 'You\'re welcome! 😊 Is there anything else I can help you with?',
-      'ayuda': 'Usa /help para ver los comandos disponibles o el menú de abajo.',
-      'help': 'Use /help to see available commands or the menu below.',
-      'menu': 'Aquí tienes el menú principal:',
-      'menú': 'Aquí tienes el menú principal:'
-    }
-
-    const lowerText = text.toLowerCase().trim()
+    // Procesar con el sistema de IA
+    const { AIMessageHandler } = await import('./ai-message-handler.js')
+    const aiHandler = AIMessageHandler.getInstance()
     
-    if (lowerText in responses) {
-      const response = responses[lowerText]
-      
-      if (response) {
-        if (lowerText === 'menu' || lowerText === 'menú') {
-          await ctx.reply(response, getMainMenuKeyboard())
-        } else {
-          await ctx.reply(response)
-        }
-      }
-      
-      logger.user.action(ctx.from?.id || 0, `Mensaje procesado: ${text}`)
-      return
-    }
-
-    // Respuesta por defecto para mensajes no reconocidos
-    const defaultResponse = `
-🤔 No estoy seguro de cómo responder a eso.
-
-Usa /help para ver los comandos disponibles o selecciona una opción del menú.
-    `.trim()
-
-    await ctx.reply(defaultResponse, getMainMenuKeyboard())
+    // Inicializar sesión si no existe
+    aiHandler.initializeUserSession(ctx)
     
-    logger.user.action(ctx.from?.id || 0, `Mensaje no reconocido: ${text}`)
+    // Procesar mensaje con IA
+    await aiHandler.handleTextMessage(ctx)
 
   } catch (error) {
     logger.error('Error manejando mensaje de texto:', error)
@@ -101,9 +71,15 @@ export async function handlePhotoMessage(ctx: BotContext) {
       })
     }
 
-    await ctx.reply('📸 ¡Gracias por la foto! ¿Hay algo específico que quieras hacer con ella?')
+    // Procesar con el sistema de IA
+    const { AIMessageHandler } = await import('./ai-message-handler.js')
+    const aiHandler = AIMessageHandler.getInstance()
     
-    logger.user.action(ctx.from?.id || 0, 'Mensaje de foto procesado')
+    // Inicializar sesión si no existe
+    aiHandler.initializeUserSession(ctx)
+    
+    // Procesar foto con IA
+    await aiHandler.handlePhotoMessage(ctx)
 
   } catch (error) {
     logger.error('Error manejando mensaje de foto:', error)

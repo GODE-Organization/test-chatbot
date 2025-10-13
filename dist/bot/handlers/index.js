@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { startCommand, helpCommand, settingsCommand, statsCommand, contactCommand, resetCommand, saludoCommand, testCommand, tiempoCommand, dadoCommand, monedaCommand, chisteCommand } from './commands.js';
+import { startCommand, helpCommand, settingsCommand, statsCommand, contactCommand, resetCommand, cancelCommand } from './commands.js';
 import { handleSettingsCallbacks, handleLanguageCallbacks, handleNotificationCallbacks, handleHelpCallbacks } from './callbacks.js';
 import { handleTextMessage, handlePhotoMessage, handleDocumentMessage, handleStickerMessage, handleVoiceMessage, handleLocationMessage, handleContactMessage } from './messages.js';
 export async function setupHandlers(bot) {
@@ -9,12 +9,7 @@ export async function setupHandlers(bot) {
     bot.command('stats', statsCommand);
     bot.command('contact', contactCommand);
     bot.command('reset', resetCommand);
-    bot.command('saludo', saludoCommand);
-    bot.command('test', testCommand);
-    bot.command('tiempo', tiempoCommand);
-    bot.command('dado', dadoCommand);
-    bot.command('moneda', monedaCommand);
-    bot.command('chiste', chisteCommand);
+    bot.command('cancel', cancelCommand);
     bot.action(/^settings_/, handleSettingsCallbacks);
     bot.action(/^lang_/, handleLanguageCallbacks);
     bot.action(/^notif_/, handleNotificationCallbacks);

@@ -230,7 +230,435 @@ export class MessageModel {
         });
     }
 }
+export class ProductModel {
+    get db() {
+        return getDatabase();
+    }
+    getAllProducts(filters) {
+        return new Promise((resolve) => {
+            try {
+                let query = 'SELECT * FROM products WHERE 1=1';
+                const params = [];
+                if (filters?.brand) {
+                    query += ' AND brand LIKE ?';
+                    params.push(`%${filters.brand}%`);
+                }
+                if (filters?.minPrice) {
+                    query += ' AND price >= ?';
+                    params.push(filters.minPrice);
+                }
+                if (filters?.maxPrice) {
+                    query += ' AND price <= ?';
+                    params.push(filters.maxPrice);
+                }
+                query += ' ORDER BY created_at DESC';
+                if (filters?.limit) {
+                    query += ' LIMIT ?';
+                    params.push(filters.limit);
+                }
+                const stmt = this.db.prepare(query);
+                stmt.all(params, (err, products) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: products || []
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    getProductByCode(code) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM products WHERE code = ?');
+                stmt.get(code, (err, product) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: product || undefined
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    createProduct(productData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO products (code, brand, image_file_id, price, description, available_units)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+                stmt.run(productData.code, productData.brand, productData.image_file_id || null, productData.price, productData.description || null, productData.available_units || 0, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: {
+                            id: this.lastID,
+                            lastInsertRowid: this.lastID
+                        }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class GuaranteeModel {
+    get db() {
+        return getDatabase();
+    }
+    getGuaranteesByUserId(userId) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM guarantees WHERE user_id = ? ORDER BY created_at DESC');
+                stmt.all(userId, (err, guarantees) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: guarantees || []
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    createGuarantee(guaranteeData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO guarantees (user_id, invoice_number, invoice_photo_file_id, product_photo_file_id, description)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+                stmt.run(guaranteeData.user_id, guaranteeData.invoice_number, guaranteeData.invoice_photo_file_id, guaranteeData.product_photo_file_id, guaranteeData.description, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: {
+                            id: this.lastID,
+                            lastInsertRowid: this.lastID
+                        }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class ScheduleModel {
+    get db() {
+        return getDatabase();
+    }
+    getAllSchedules() {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM schedules WHERE is_active = 1 ORDER BY day_of_week');
+                stmt.all((err, schedules) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: schedules || []
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class StoreConfigModel {
+    get db() {
+        return getDatabase();
+    }
+    getStoreConfig() {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM store_config ORDER BY id DESC LIMIT 1');
+                stmt.get((err, config) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: config || undefined
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    updateStoreConfig(configData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO store_config (name, address, latitude, longitude, phone, email)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            address = excluded.address,
+            latitude = excluded.latitude,
+            longitude = excluded.longitude,
+            phone = excluded.phone,
+            email = excluded.email,
+            updated_at = CURRENT_TIMESTAMP
+        `);
+                stmt.run(configData.name, configData.address, configData.latitude || null, configData.longitude || null, configData.phone || null, configData.email || null, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: { changes: this.changes }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class SatisfactionSurveyModel {
+    get db() {
+        return getDatabase();
+    }
+    createSurvey(surveyData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO satisfaction_surveys (user_id, rating, feedback, conversation_id)
+          VALUES (?, ?, ?, ?)
+        `);
+                stmt.run(surveyData.user_id, surveyData.rating, surveyData.feedback || null, surveyData.conversation_id || null, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: {
+                            id: this.lastID,
+                            lastInsertRowid: this.lastID
+                        }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class ConversationModel {
+    get db() {
+        return getDatabase();
+    }
+    createConversation(conversationData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO conversations (user_id, ai_session_data)
+          VALUES (?, ?)
+        `);
+                stmt.run(conversationData.user_id, conversationData.ai_session_data || null, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: {
+                            id: this.lastID,
+                            lastInsertRowid: this.lastID
+                        }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    getActiveConversation(userId) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('SELECT * FROM conversations WHERE user_id = ? AND status = "active" ORDER BY started_at DESC LIMIT 1');
+                stmt.get(userId, (err, conversation) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: conversation || undefined
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    endConversation(conversationId) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('UPDATE conversations SET status = "ended", ended_at = CURRENT_TIMESTAMP WHERE id = ?');
+                stmt.run(conversationId, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: { changes: this.changes }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+    updateConversationData(conversationId, aiSessionData) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare('UPDATE conversations SET ai_session_data = ? WHERE id = ?');
+                stmt.run(aiSessionData, conversationId, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: { changes: this.changes }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
 export const userModel = new UserModel();
 export const chatModel = new ChatModel();
 export const messageModel = new MessageModel();
+export const productModel = new ProductModel();
+export const guaranteeModel = new GuaranteeModel();
+export const scheduleModel = new ScheduleModel();
+export const storeConfigModel = new StoreConfigModel();
+export const satisfactionSurveyModel = new SatisfactionSurveyModel();
+export const conversationModel = new ConversationModel();
 //# sourceMappingURL=models.js.map
