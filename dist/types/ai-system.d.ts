@@ -133,6 +133,7 @@ export interface MessageProcessingResult {
     response?: AIResponse;
     actions?: AIAction[];
     session_data?: Record<string, any>;
+    action_results?: AICommandResponse[];
     error?: string;
 }
 //# sourceMappingURL=ai-system.d.ts.map

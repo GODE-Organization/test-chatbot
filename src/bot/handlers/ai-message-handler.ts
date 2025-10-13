@@ -154,27 +154,12 @@ export class AIMessageHandler {
       // Obtener datos de sesión de IA
       const aiSessionData = ctx.session?.ai_session_data || {}
 
-      // Enviar mensaje a IA externa
-      const aiResponse = await this.aiClient.sendMessageToAI(
+      // Procesar mensaje con Gemini
+      const result = await this.aiProcessor.sendMessageToAI(
         message,
         ctx.user.id,
+        ctx.chat?.id || 0,
         aiSessionData
-      )
-
-      if (!aiResponse.success) {
-        await ctx.reply('❌ Error comunicándose con el sistema de IA. Intenta de nuevo.')
-        return
-      }
-
-      // Procesar respuesta de IA
-      const result = await this.aiProcessor.processAIResponse(
-        {
-          response: aiResponse.response!,
-          actions: aiResponse.actions || [],
-          session_data: aiResponse.session_data
-        },
-        ctx.user.id,
-        ctx.chat?.id || 0
       )
 
       if (!result.success) {

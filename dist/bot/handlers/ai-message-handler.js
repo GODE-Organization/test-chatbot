@@ -106,16 +106,7 @@ export class AIMessageHandler {
                 return;
             }
             const aiSessionData = ctx.session?.ai_session_data || {};
-            const aiResponse = await this.aiClient.sendMessageToAI(message, ctx.user.id, aiSessionData);
-            if (!aiResponse.success) {
-                await ctx.reply('❌ Error comunicándose con el sistema de IA. Intenta de nuevo.');
-                return;
-            }
-            const result = await this.aiProcessor.processAIResponse({
-                response: aiResponse.response,
-                actions: aiResponse.actions || [],
-                session_data: aiResponse.session_data
-            }, ctx.user.id, ctx.chat?.id || 0);
+            const result = await this.aiProcessor.sendMessageToAI(message, ctx.user.id, ctx.chat?.id || 0, aiSessionData);
             if (!result.success) {
                 await ctx.reply('❌ Error procesando respuesta de IA.');
                 return;

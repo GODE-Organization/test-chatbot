@@ -1,13 +1,46 @@
 import { logger } from '../../utils/logger.js';
 import { productModel, guaranteeModel, scheduleModel, storeConfigModel, conversationModel } from '../../database/models.js';
+import { GeminiAdapter, GeminiAdapterFactory } from './gemini-adapter.js';
 export class AIProcessor {
     static instance;
-    constructor() { }
+    geminiAdapter;
+    constructor() {
+        this.geminiAdapter = GeminiAdapterFactory.createAdapter();
+    }
     static getInstance() {
         if (!AIProcessor.instance) {
             AIProcessor.instance = new AIProcessor();
         }
         return AIProcessor.instance;
+    }
+    async sendMessageToAI(userMessage, userId, chatId, sessionData) {
+        try {
+            logger.debug(`Enviando mensaje a Gemini - Usuario: ${userId}, Chat: ${chatId}`);
+            const result = await this.geminiAdapter.sendMessageToAI(userMessage, userId, sessionData);
+            if (!result.success) {
+                return result;
+            }
+            const actionResults = [];
+            for (const action of result.actions || []) {
+                const actionResult = await this.executeAIAction(action, userId, chatId);
+                actionResults.push(actionResult);
+            }
+            const response = result.response || { text: 'Respuesta procesada correctamente', parse_mode: 'Markdown' };
+            return {
+                success: true,
+                response,
+                actions: result.actions || [],
+                session_data: result.session_data || {},
+                action_results: actionResults
+            };
+        }
+        catch (error) {
+            logger.error('Error enviando mensaje a Gemini:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error de comunicación con Gemini'
+            };
+        }
     }
     async processAIResponse(aiResponse, userId, chatId) {
         try {
@@ -275,6 +308,15 @@ export class AIProcessor {
             state: 'idle',
             last_activity: new Date()
         };
+    }
+    async checkGeminiConnectivity() {
+        try {
+            return await this.geminiAdapter.checkConnectivity();
+        }
+        catch (error) {
+            logger.error('Error verificando conectividad con Gemini:', error);
+            return false;
+        }
     }
 }
 //# sourceMappingURL=ai-processor.js.map

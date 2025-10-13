@@ -9,20 +9,73 @@ import type {
 } from '../../types/ai-system.js'
 import { logger } from '../../utils/logger.js'
 import { productModel, guaranteeModel, scheduleModel, storeConfigModel, conversationModel } from '../../database/models.js'
+import { GeminiAdapter, GeminiAdapterFactory } from './gemini-adapter.js'
 
 /**
  * Procesador de respuestas de IA externa
  */
 export class AIProcessor {
   private static instance: AIProcessor
+  private geminiAdapter: GeminiAdapter
 
-  private constructor() {}
+  private constructor() {
+    this.geminiAdapter = GeminiAdapterFactory.createAdapter()
+  }
 
   public static getInstance(): AIProcessor {
     if (!AIProcessor.instance) {
       AIProcessor.instance = new AIProcessor()
     }
     return AIProcessor.instance
+  }
+
+  /**
+   * Envía un mensaje a Gemini y procesa la respuesta
+   */
+  public async sendMessageToAI(
+    userMessage: string,
+    userId: number,
+    chatId: number,
+    sessionData?: Record<string, any>
+  ): Promise<MessageProcessingResult> {
+    try {
+      logger.debug(`Enviando mensaje a Gemini - Usuario: ${userId}, Chat: ${chatId}`)
+      
+      const result = await this.geminiAdapter.sendMessageToAI(
+        userMessage,
+        userId,
+        sessionData
+      )
+
+      if (!result.success) {
+        return result
+      }
+
+      // Procesar las acciones de la IA
+      const actionResults: AICommandResponse[] = []
+      
+      for (const action of result.actions || []) {
+        const actionResult = await this.executeAIAction(action, userId, chatId)
+        actionResults.push(actionResult)
+      }
+
+      const response = result.response || { text: 'Respuesta procesada correctamente', parse_mode: 'Markdown' as const }
+      
+      return {
+        success: true,
+        response,
+        actions: result.actions || [],
+        session_data: result.session_data || {},
+        action_results: actionResults
+      }
+
+    } catch (error) {
+      logger.error('Error enviando mensaje a Gemini:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error de comunicación con Gemini'
+      }
+    }
   }
 
   /**
@@ -375,6 +428,18 @@ export class AIProcessor {
     return {
       state: 'idle',
       last_activity: new Date()
+    }
+  }
+
+  /**
+   * Verifica la conectividad con Gemini
+   */
+  public async checkGeminiConnectivity(): Promise<boolean> {
+    try {
+      return await this.geminiAdapter.checkConnectivity()
+    } catch (error) {
+      logger.error('Error verificando conectividad con Gemini:', error)
+      return false
     }
   }
 }
