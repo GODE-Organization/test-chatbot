@@ -76,12 +76,18 @@ export async function setupHandlers(bot: Telegraf<BotContext>): Promise<void> {
     }
   })
 
-  // Manejo de errores específicos
+  // Manejo de callbacks
   bot.on('callback_query', async (ctx) => {
     try {
-      await ctx.answerCbQuery()
+      // Importar y usar el handler de callbacks de IA
+      const { AIMessageHandler } = await import('./ai-message-handler.js')
+      const aiHandler = AIMessageHandler.getInstance()
+      
+      // Procesar callback con el handler de IA
+      await aiHandler.handleCallbackQuery(ctx)
     } catch (error) {
       console.error('Error en callback query:', error)
+      await ctx.answerCbQuery('❌ Error procesando selección')
     }
   })
 }

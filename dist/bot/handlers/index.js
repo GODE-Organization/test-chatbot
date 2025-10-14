@@ -42,10 +42,13 @@ export async function setupHandlers(bot) {
     });
     bot.on('callback_query', async (ctx) => {
         try {
-            await ctx.answerCbQuery();
+            const { AIMessageHandler } = await import('./ai-message-handler.js');
+            const aiHandler = AIMessageHandler.getInstance();
+            await aiHandler.handleCallbackQuery(ctx);
         }
         catch (error) {
             console.error('Error en callback query:', error);
+            await ctx.answerCbQuery('❌ Error procesando selección');
         }
     });
 }

@@ -107,13 +107,31 @@ export class AIMessageHandler {
     async handleCallbackQuery(ctx) {
         try {
             if (!ctx.callbackQuery || !('data' in ctx.callbackQuery) || !ctx.user) {
+                logger.warn('Callback query inválido:', {
+                    hasCallbackQuery: !!ctx.callbackQuery,
+                    hasData: ctx.callbackQuery && 'data' in ctx.callbackQuery,
+                    hasUser: !!ctx.user
+                });
                 return;
             }
             const callbackData = ctx.callbackQuery.data;
+            logger.info('🔘 Callback recibido:', {
+                userId: ctx.user.id,
+                callbackData,
+                messageId: ctx.callbackQuery.message?.message_id
+            });
             if (callbackData.startsWith('survey_')) {
-                await this.surveyHandler.handleSurveyCallback(ctx, callbackData);
+                logger.info('📝 Procesando callback de encuesta:', callbackData);
+                const handled = await this.surveyHandler.handleSurveyCallback(ctx, callbackData);
+                if (handled) {
+                    logger.info('✅ Callback de encuesta procesado exitosamente');
+                }
+                else {
+                    logger.warn('⚠️ Callback de encuesta no se procesó correctamente');
+                }
                 return;
             }
+            logger.warn('❓ Callback no reconocido:', callbackData);
         }
         catch (error) {
             logger.error('Error manejando callback query:', error);
@@ -234,14 +252,31 @@ export class AIMessageHandler {
             if (!ctx.user) {
                 return;
             }
+            let conversationId = null;
             const conversationResult = await conversationModel.getActiveConversation(ctx.user.id);
             if (conversationResult.success && conversationResult.data) {
                 await conversationModel.endConversation(conversationResult.data.id);
-                await this.surveyHandler.sendSatisfactionSurvey(ctx, conversationResult.data.id);
+                conversationId = conversationResult.data.id;
+            }
+            else {
+                const newConversationResult = await conversationModel.createConversation({
+                    user_id: ctx.user.id,
+                    ai_session_data: JSON.stringify({ flow: 'conversation_ended' })
+                });
+                if (newConversationResult.success && newConversationResult.data) {
+                    conversationId = newConversationResult.data.id;
+                }
+            }
+            if (conversationId) {
+                await this.surveyHandler.sendSatisfactionSurvey(ctx, conversationId);
+            }
+            else {
+                await ctx.reply('¡Gracias por contactarnos! ¿Hay algo más en lo que pueda ayudarte?');
             }
         }
         catch (error) {
             logger.error('Error manejando fin de conversación:', error);
+            await ctx.reply('¡Gracias por contactarnos! ¿Hay algo más en lo que pueda ayudarte?');
         }
     }
     initializeUserSession(ctx) {

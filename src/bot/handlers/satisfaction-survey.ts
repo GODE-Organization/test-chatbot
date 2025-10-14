@@ -37,13 +37,13 @@ export class SatisfactionSurveyHandler {
       }
 
       const message = `
-📝 **Encuesta de Satisfacción**
+📝 Encuesta de Satisfacción
 
 ¡Gracias por contactarnos! Tu opinión es muy importante para nosotros.
 
 ¿Cómo calificarías tu experiencia con nuestro servicio de atención?
 
-*Selecciona una opción:*
+Selecciona una opción:
       `.trim()
 
       const keyboard = Markup.inlineKeyboard([
@@ -102,7 +102,7 @@ export class SatisfactionSurveyHandler {
       switch (rating) {
         case 5:
           responseMessage = `
-😊 **¡Excelente!**
+😊 ¡Excelente!
 
 ¡Nos alegra saber que tuviste una excelente experiencia! Tu calificación nos ayuda a seguir mejorando.
 
@@ -111,7 +111,7 @@ export class SatisfactionSurveyHandler {
           break
         case 4:
           responseMessage = `
-😌 **¡Muy bien!**
+😌 ¡Muy bien!
 
 ¡Gracias por tu calificación! Nos esforzamos por brindar el mejor servicio.
 
@@ -120,7 +120,7 @@ export class SatisfactionSurveyHandler {
           break
         case 3:
           responseMessage = `
-😐 **¡Gracias!**
+😐 ¡Gracias!
 
 Apreciamos tu feedback. Trabajamos constantemente para mejorar nuestro servicio.
 
@@ -129,7 +129,7 @@ Apreciamos tu feedback. Trabajamos constantemente para mejorar nuestro servicio.
           break
         case 2:
           responseMessage = `
-😕 **Entendemos tu preocupación**
+😕 Entendemos tu preocupación
 
 Lamentamos que tu experiencia no haya sido la esperada. Tu feedback es valioso para nosotros.
 
@@ -138,7 +138,7 @@ Lamentamos que tu experiencia no haya sido la esperada. Tu feedback es valioso p
           break
         case 1:
           responseMessage = `
-😞 **Lamentamos mucho tu experiencia**
+😞 Lamentamos mucho tu experiencia
 
 Nos disculpamos sinceramente. Tu feedback es crucial para mejorar nuestro servicio.
 
@@ -147,7 +147,7 @@ Por favor, contacta a un supervisor escribiendo /contact para que podamos resolv
           break
         default:
           responseMessage = `
-✅ **¡Gracias por tu feedback!**
+✅ ¡Gracias por tu feedback!
 
 Tu opinión es muy importante para nosotros.
           `.trim()
@@ -168,16 +168,27 @@ Tu opinión es muy importante para nosotros.
    */
   public async handleSurveyCallback(ctx: BotContext, callbackData: string): Promise<boolean> {
     try {
+      logger.info('📊 Procesando callback de encuesta:', {
+        userId: ctx.user?.id,
+        callbackData,
+        sessionState: ctx.session?.state,
+        flowData: ctx.session?.flow_data
+      })
+
       if (!callbackData.startsWith('survey_')) {
+        logger.warn('❌ Callback no es de encuesta:', callbackData)
         return false
       }
 
       const rating = parseInt(callbackData.replace('survey_', ''))
       
       if (isNaN(rating) || rating < 1 || rating > 5) {
+        logger.warn('❌ Calificación inválida:', rating)
         await ctx.answerCbQuery('❌ Calificación inválida')
         return false
       }
+
+      logger.info('✅ Calificación válida recibida:', rating)
 
       // Procesar respuesta
       await this.processSurveyResponse(ctx, rating)
@@ -185,6 +196,7 @@ Tu opinión es muy importante para nosotros.
       // Responder al callback
       await ctx.answerCbQuery('✅ ¡Gracias por tu calificación!')
       
+      logger.info('✅ Callback de encuesta procesado exitosamente')
       return true
 
     } catch (error) {

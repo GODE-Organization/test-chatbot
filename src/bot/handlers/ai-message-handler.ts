@@ -143,18 +143,35 @@ export class AIMessageHandler {
   public async handleCallbackQuery(ctx: BotContext): Promise<void> {
     try {
       if (!ctx.callbackQuery || !('data' in ctx.callbackQuery) || !ctx.user) {
+        logger.warn('Callback query inválido:', {
+          hasCallbackQuery: !!ctx.callbackQuery,
+          hasData: ctx.callbackQuery && 'data' in ctx.callbackQuery,
+          hasUser: !!ctx.user
+        })
         return
       }
 
       const callbackData = ctx.callbackQuery.data
+      logger.info('🔘 Callback recibido:', {
+        userId: ctx.user.id,
+        callbackData,
+        messageId: ctx.callbackQuery.message?.message_id
+      })
 
       // Manejar callbacks de encuesta
       if (callbackData.startsWith('survey_')) {
-        await this.surveyHandler.handleSurveyCallback(ctx, callbackData)
+        logger.info('📝 Procesando callback de encuesta:', callbackData)
+        const handled = await this.surveyHandler.handleSurveyCallback(ctx, callbackData)
+        if (handled) {
+          logger.info('✅ Callback de encuesta procesado exitosamente')
+        } else {
+          logger.warn('⚠️ Callback de encuesta no se procesó correctamente')
+        }
         return
       }
 
       // Otros callbacks pueden agregarse aquí
+      logger.warn('❓ Callback no reconocido:', callbackData)
 
     } catch (error) {
       logger.error('Error manejando callback query:', error)
@@ -327,19 +344,38 @@ export class AIMessageHandler {
         return
       }
 
+      let conversationId: number | null = null
+
       // Obtener conversación activa
       const conversationResult = await conversationModel.getActiveConversation(ctx.user.id)
       
       if (conversationResult.success && conversationResult.data) {
-        // Terminar conversación
+        // Terminar conversación existente
         await conversationModel.endConversation(conversationResult.data.id)
+        conversationId = conversationResult.data.id
+      } else {
+        // Crear nueva conversación para la encuesta si no hay una activa
+        const newConversationResult = await conversationModel.createConversation({
+          user_id: ctx.user.id,
+          ai_session_data: JSON.stringify({ flow: 'conversation_ended' })
+        })
         
-        // Enviar encuesta de satisfacción
-        await this.surveyHandler.sendSatisfactionSurvey(ctx, conversationResult.data.id)
+        if (newConversationResult.success && newConversationResult.data) {
+          conversationId = newConversationResult.data.id
+        }
+      }
+
+      // Enviar encuesta de satisfacción si tenemos un ID de conversación
+      if (conversationId) {
+        await this.surveyHandler.sendSatisfactionSurvey(ctx, conversationId)
+      } else {
+        // Si no se puede crear conversación, enviar mensaje de despedida
+        await ctx.reply('¡Gracias por contactarnos! ¿Hay algo más en lo que pueda ayudarte?')
       }
 
     } catch (error) {
       logger.error('Error manejando fin de conversación:', error)
+      await ctx.reply('¡Gracias por contactarnos! ¿Hay algo más en lo que pueda ayudarte?')
     }
   }
 
