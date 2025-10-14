@@ -16,6 +16,7 @@ export declare class AIMessageHandler {
     private handleEndConversation;
     initializeUserSession(ctx: BotContext): void;
     private isCatalogQuery;
+    private isGuaranteesQuery;
     handleCancelCommand(ctx: BotContext): Promise<void>;
     private sanitizeMarkdownText;
 }

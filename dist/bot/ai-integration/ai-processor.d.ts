@@ -20,6 +20,7 @@ export declare class AIProcessor {
     updateSessionForSurvey(session: UserSessionData, conversationId: number): UserSessionData;
     resetSessionToIdle(session: UserSessionData): UserSessionData;
     private sendCatalogDataToGemini;
+    private sendGuaranteesDataToGemini;
     checkGeminiConnectivity(): Promise<boolean>;
 }
 //# sourceMappingURL=ai-processor.d.ts.map

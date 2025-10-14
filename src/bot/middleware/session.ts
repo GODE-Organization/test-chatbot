@@ -34,26 +34,33 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
       if (userResult.success && userResult.data && userResult.data.settings) {
         try {
           const settings = JSON.parse(userResult.data.settings)
-          logger.info('📋 Settings parseados:', { userId: ctx.from.id, settings })
+          logger.info('📋 Settings parseados:', { 
+            userId: ctx.from.id, 
+            settings,
+            settingsString: userResult.data.settings,
+            settingsLength: userResult.data.settings?.length
+          })
           
           // Crear sesión basada en el estado guardado
           ctx.session = {
             state: settings.state || 'idle' as BotFlowState,
             last_activity: new Date(),
-            flow_data: settings.flow_data,
-            ai_session_data: settings.ai_session_data
+            flow_data: settings.flow_data ? JSON.parse(settings.flow_data) : undefined,
+            ai_session_data: settings.ai_session_data ? JSON.parse(settings.ai_session_data) : undefined
           }
           logger.info('✅ Sesión recuperada desde BD:', {
             userId: ctx.from.id,
             state: ctx.session.state,
-            flowData: ctx.session.flow_data
+            flowData: ctx.session.flow_data,
+            originalSettings: settings
           })
         } catch (parseError) {
           // Si hay error parseando settings, crear sesión inicial
           ctx.session = aiProcessor.createInitialSession()
           logger.warn('⚠️ Error parseando settings, nueva sesión creada:', {
             userId: ctx.from.id,
-            error: parseError
+            error: parseError,
+            settingsString: userResult.data.settings
           })
         }
       } else {
@@ -61,14 +68,18 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
         ctx.session = aiProcessor.createInitialSession()
         logger.info('🆕 Nueva sesión creada:', {
           userId: ctx.from.id,
-          state: ctx.session.state
+          state: ctx.session.state,
+          reason: !userResult.success ? 'Error en getUserByTelegramId' : 
+                  !userResult.data ? 'No hay datos de usuario' : 
+                  'No hay settings'
         })
       }
     } else {
       logger.info('✅ Sesión ya existe:', {
         userId: ctx.from.id,
         state: ctx.session.state,
-        flowData: ctx.session.flow_data
+        flowData: ctx.session.flow_data,
+        isGuaranteeFlow: ctx.session.state === 'guarantee_flow'
       })
     }
 
@@ -78,9 +89,13 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
     // Manejar timeout de conversación
     await handleConversationTimeout(ctx, timeoutManager)
 
-    // Actualizar estado del usuario en la base de datos
-    logger.info('💾 Guardando sesión en BD:', {
-      userId: ctx.from.id,
+    // Procesar el mensaje PRIMERO
+    await next()
+
+    // Guardar sesión DESPUÉS de procesar el mensaje
+    logger.info('💾 Guardando sesión en BD (después de procesar):', {
+      telegramId: ctx.from.id,
+      dbUserId: ctx.user?.id,
       state: ctx.session.state,
       flowData: ctx.session.flow_data,
       aiSessionData: ctx.session.ai_session_data
@@ -92,12 +107,23 @@ export async function sessionMiddleware(ctx: BotContext, next: () => Promise<voi
     })
     
     logger.info('💾 Resultado de guardado en BD:', {
-      userId: ctx.from.id,
+      telegramId: ctx.from.id,
       success: updateResult.success,
-      error: updateResult.error
+      error: updateResult.error,
+      changes: updateResult.data?.changes
     })
-
-    await next()
+    
+    // Verificar que se guardó correctamente
+    if (updateResult.success) {
+      const verifyResult = await userModel.getUserByTelegramId(ctx.from.id)
+      if (verifyResult.success && verifyResult.data) {
+        logger.info('🔍 Verificación de guardado:', {
+          telegramId: ctx.from.id,
+          settings: verifyResult.data.settings,
+          settingsParsed: verifyResult.data.settings ? JSON.parse(verifyResult.data.settings) : null
+        })
+      }
+    }
 
     // Guardar datos de sesión de IA si existen
     if (ctx.session?.ai_session_data && ctx.user) {

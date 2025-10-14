@@ -50,6 +50,17 @@ export class AIProcessor {
                         }
                     }
                 }
+                if (action.command === 'CONSULT_GUARANTEES' && actionResult.success && actionResult.data) {
+                    logger.info('🔧 Enviando datos de garantías a Gemini para formateo:', {
+                        guaranteeCount: actionResult.data.length,
+                        userId
+                    });
+                    const guaranteesResult = await this.sendGuaranteesDataToGemini(actionResult.data, userId, sessionData);
+                    if (guaranteesResult.success) {
+                        result.response = guaranteesResult.response;
+                        logger.info('✅ Respuesta de garantías formateada por Gemini:', guaranteesResult.response);
+                    }
+                }
                 if (action.command === 'SEND_IMAGE' && actionResult.success && actionResult.data) {
                     logger.info('📸 Preparando imagen de producto:', {
                         productId: actionResult.data.product?.id,
@@ -452,6 +463,92 @@ Ejemplo de texto formateado:
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Error formateando catálogo'
+            };
+        }
+    }
+    async sendGuaranteesDataToGemini(guarantees, userId, sessionData) {
+        try {
+            const guaranteesPrompt = `
+FORMATEAR GARANTÍAS DEL USUARIO:
+
+Tienes que formatear la siguiente lista de garantías del usuario de Tecno Express de manera clara y organizada.
+
+GARANTÍAS DEL USUARIO:
+${JSON.stringify(guarantees, null, 2)}
+
+INSTRUCCIONES:
+1. Presenta las garantías de forma clara con emojis apropiados
+2. Incluye número de garantía, número de factura, estado, fecha de creación y descripción
+3. Organiza por estado (Pendiente, En Proceso, Aprobada, Rechazada, Completada)
+4. Usa formato Markdown para mejor presentación
+5. Muestra el estado con emojis apropiados:
+   - ⏳ Pendiente
+   - 🔄 En Proceso
+   - ✅ Aprobada
+   - ❌ Rechazada
+   - 🎉 Completada
+6. Mantén un tono amigable y profesional como Max
+7. Si no hay garantías, explica que el usuario puede registrar una nueva
+8. Incluye información sobre cómo registrar una nueva garantía si es necesario
+
+FORMATO DE RESPUESTA:
+Responde con JSON en este formato:
+{
+  "response": {
+    "text": "Tu texto formateado aquí",
+    "parse_mode": "Markdown",
+    "reply_markup": {
+      "inline_keyboard": [
+        [{"text": "🔧 Registrar Nueva Garantía", "callback_data": "start_guarantee_flow"}]
+      ]
+    }
+  }
+}
+
+Ejemplo de texto formateado:
+🔧 **Mis Garantías**
+
+**⏳ Garantías Pendientes**
+• **Garantía #123** - Factura: INV-2024-001
+  _Fecha: 15/10/2024_
+  _Descripción: Problema con la pantalla del microondas_
+  ⏳ Pendiente de revisión
+
+**✅ Garantías Aprobadas**
+• **Garantía #120** - Factura: INV-2024-002
+  _Fecha: 10/10/2024_
+  _Descripción: Fallo en el motor de la licuadora_
+  ✅ Aprobada - En proceso de reparación
+
+**🎉 Garantías Completadas**
+• **Garantía #115** - Factura: INV-2024-003
+  _Fecha: 05/10/2024_
+  _Descripción: Problema con el termostato de la plancha_
+  🎉 Completada - Producto reparado exitosamente
+
+💡 **¿Necesitas registrar una nueva garantía?**
+Puedes hacerlo enviando el comando /garantia o usando el botón de abajo.
+      `.trim();
+            const result = await this.geminiAdapter.sendMessageToAI(guaranteesPrompt, userId, sessionData);
+            if (!result.success) {
+                logger.error('Error formateando garantías con Gemini:', result.error);
+                return {
+                    success: false,
+                    error: result.error || 'Error formateando garantías'
+                };
+            }
+            return {
+                success: true,
+                response: result.response || { text: 'Garantías formateadas', parse_mode: 'Markdown' },
+                actions: result.actions || [],
+                session_data: result.session_data || {}
+            };
+        }
+        catch (error) {
+            logger.error('Error enviando datos de garantías a Gemini:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Error formateando garantías'
             };
         }
     }

@@ -22,11 +22,6 @@ export async function authMiddleware(ctx, next) {
                 ...(userResult.data.last_name && { last_name: userResult.data.last_name }),
                 ...(userResult.data.language_code && { language_code: userResult.data.language_code })
             };
-            if (!ctx.session) {
-                const { AIProcessor } = await import('../ai-integration/ai-processor.js');
-                const aiProcessor = AIProcessor.getInstance();
-                ctx.session = aiProcessor.createInitialSession();
-            }
             logger.user.action(ctx.from.id, `Usuario autenticado: ${userResult.data.first_name || userResult.data.username || 'Sin nombre'}`);
         }
         else {

@@ -174,12 +174,13 @@ INSTRUCCIONES:
    - Si pregunta "productos baratos", usa filters: { maxPrice: 50 }
    - Si pregunta "productos caros", usa filters: { minPrice: 100 }
    - Si no especifica, usa limit: 5 para respuesta rápida
-7. Si el usuario quiere registrar una garantía, usa REGISTER_GUARANTEE
-8. Si el usuario pregunta horarios, usa CONSULT_SCHEDULE
-9. Si el usuario pregunta ubicación, usa SEND_GEOLOCATION
-10. Si el usuario se despide, usa END_CONVERSATION
-11. Mantén el contexto en session_data
-12. SIEMPRE responde con JSON válido, nunca texto plano
+7. Si el usuario pregunta sobre sus garantías, usa CONSULT_GUARANTEES con user_id
+8. Si el usuario quiere registrar una garantía, usa REGISTER_GUARANTEE
+9. Si el usuario pregunta horarios, usa CONSULT_SCHEDULE
+10. Si el usuario pregunta ubicación, usa SEND_GEOLOCATION
+11. Si el usuario se despide, usa END_CONVERSATION
+12. Mantén el contexto en session_data
+13. SIEMPRE responde con JSON válido, nunca texto plano
 
 IMPORTANTE: 
 - Tu respuesta debe ser SOLO el JSON, sin texto adicional antes o después
@@ -188,6 +189,9 @@ IMPORTANTE:
 - Los productos incluyen precios en USD y Bs (bolívares venezolanos) automáticamente
 - Siempre muestra ambos precios: USD y Bs para dar opciones al cliente
 - Usa formato: "Precio: $X USD / Y Bs (BCV)" para mostrar ambos precios
+- Cuando uses CONSULT_GUARANTEES, NO incluyas información de garantías en tu respuesta inicial
+- El sistema te proporcionará los datos de garantías después de ejecutar el comando
+- Las garantías se mostrarán organizadas por estado con formato atractivo
     `.trim()
   }
 

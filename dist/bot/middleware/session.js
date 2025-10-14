@@ -10,45 +10,94 @@ export async function sessionMiddleware(ctx, next) {
         const timeoutManager = ConversationTimeoutManager.getInstance();
         const aiProcessor = AIProcessor.getInstance();
         if (!ctx.session) {
+            logger.info('🔍 No hay sesión, recuperando desde BD:', { userId: ctx.from.id });
             const userResult = await userModel.getUserByTelegramId(ctx.from.id);
+            logger.info('📊 Resultado de getUserByTelegramId:', {
+                userId: ctx.from.id,
+                success: userResult.success,
+                hasData: !!userResult.data,
+                hasSettings: !!userResult.data?.settings
+            });
             if (userResult.success && userResult.data && userResult.data.settings) {
                 try {
                     const settings = JSON.parse(userResult.data.settings);
+                    logger.info('📋 Settings parseados:', {
+                        userId: ctx.from.id,
+                        settings,
+                        settingsString: userResult.data.settings,
+                        settingsLength: userResult.data.settings?.length
+                    });
                     ctx.session = {
                         state: settings.state || 'idle',
                         last_activity: new Date(),
-                        flow_data: settings.flow_data,
-                        ai_session_data: settings.ai_session_data
+                        flow_data: settings.flow_data ? JSON.parse(settings.flow_data) : undefined,
+                        ai_session_data: settings.ai_session_data ? JSON.parse(settings.ai_session_data) : undefined
                     };
-                    logger.debug('Sesión recuperada desde BD:', {
+                    logger.info('✅ Sesión recuperada desde BD:', {
                         userId: ctx.from.id,
                         state: ctx.session.state,
-                        flowData: ctx.session.flow_data
+                        flowData: ctx.session.flow_data,
+                        originalSettings: settings
                     });
                 }
                 catch (parseError) {
                     ctx.session = aiProcessor.createInitialSession();
-                    logger.debug('Error parseando settings, nueva sesión creada:', {
+                    logger.warn('⚠️ Error parseando settings, nueva sesión creada:', {
                         userId: ctx.from.id,
-                        error: parseError
+                        error: parseError,
+                        settingsString: userResult.data.settings
                     });
                 }
             }
             else {
                 ctx.session = aiProcessor.createInitialSession();
-                logger.debug('Nueva sesión creada:', {
+                logger.info('🆕 Nueva sesión creada:', {
                     userId: ctx.from.id,
-                    state: ctx.session.state
+                    state: ctx.session.state,
+                    reason: !userResult.success ? 'Error en getUserByTelegramId' :
+                        !userResult.data ? 'No hay datos de usuario' :
+                            'No hay settings'
                 });
             }
         }
+        else {
+            logger.info('✅ Sesión ya existe:', {
+                userId: ctx.from.id,
+                state: ctx.session.state,
+                flowData: ctx.session.flow_data,
+                isGuaranteeFlow: ctx.session.state === 'guarantee_flow'
+            });
+        }
         ctx.session.last_activity = new Date();
         await handleConversationTimeout(ctx, timeoutManager);
-        await userModel.updateUserState(ctx.from.id, ctx.session.state, {
+        await next();
+        logger.info('💾 Guardando sesión en BD (después de procesar):', {
+            telegramId: ctx.from.id,
+            dbUserId: ctx.user?.id,
+            state: ctx.session.state,
+            flowData: ctx.session.flow_data,
+            aiSessionData: ctx.session.ai_session_data
+        });
+        const updateResult = await userModel.updateUserState(ctx.from.id, ctx.session.state, {
             flow_data: ctx.session.flow_data ? JSON.stringify(ctx.session.flow_data) : null,
             ai_session_data: ctx.session.ai_session_data ? JSON.stringify(ctx.session.ai_session_data) : null
         });
-        await next();
+        logger.info('💾 Resultado de guardado en BD:', {
+            telegramId: ctx.from.id,
+            success: updateResult.success,
+            error: updateResult.error,
+            changes: updateResult.data?.changes
+        });
+        if (updateResult.success) {
+            const verifyResult = await userModel.getUserByTelegramId(ctx.from.id);
+            if (verifyResult.success && verifyResult.data) {
+                logger.info('🔍 Verificación de guardado:', {
+                    telegramId: ctx.from.id,
+                    settings: verifyResult.data.settings,
+                    settingsParsed: verifyResult.data.settings ? JSON.parse(verifyResult.data.settings) : null
+                });
+            }
+        }
         if (ctx.session?.ai_session_data && ctx.user) {
             await saveAISessionData(ctx.user.id, ctx.session.ai_session_data);
         }

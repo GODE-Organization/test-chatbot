@@ -57,7 +57,8 @@ export class AIMessageHandler {
 
       // Verificar si está en flujo de garantía
       logger.info('🔍 Verificando flujo de garantía en handleTextMessage:', {
-        userId: ctx.user.id,
+        telegramId: ctx.from?.id,
+        dbUserId: ctx.user.id,
         sessionState: ctx.session?.state,
         flowData: ctx.session?.flow_data,
         message: text
@@ -170,12 +171,15 @@ export class AIMessageHandler {
         return
       }
 
-      // Detectar si es una consulta de catálogo para mostrar mensaje de carga
+      // Detectar si es una consulta de catálogo o garantías para mostrar mensaje de carga
       const isCatalogQuery = this.isCatalogQuery(message)
+      const isGuaranteesQuery = this.isGuaranteesQuery(message)
       let loadingMessage: any = null
 
       if (isCatalogQuery) {
         loadingMessage = await ctx.reply('🔍 Estoy consultando nuestro catálogo de productos... ⏳')
+      } else if (isGuaranteesQuery) {
+        loadingMessage = await ctx.reply('🔧 Estoy consultando tus garantías... ⏳')
       }
 
       // Obtener datos de sesión de IA
@@ -372,6 +376,35 @@ export class AIMessageHandler {
     
     const lowerMessage = message.toLowerCase()
     return catalogKeywords.some(keyword => lowerMessage.includes(keyword))
+  }
+
+  /**
+   * Detecta si el mensaje es una consulta de garantías
+   */
+  private isGuaranteesQuery(message: string): boolean {
+    const guaranteesKeywords = [
+      'garantías',
+      'garantias',
+      'garantía',
+      'garantia',
+      'mis garantías',
+      'mis garantias',
+      'estado de garantía',
+      'estado de garantia',
+      'revisar garantía',
+      'revisar garantia',
+      'consultar garantía',
+      'consultar garantia',
+      'ver garantías',
+      'ver garantias',
+      'listar garantías',
+      'listar garantias',
+      'mostrar garantías',
+      'mostrar garantias'
+    ]
+    
+    const lowerMessage = message.toLowerCase()
+    return guaranteesKeywords.some(keyword => lowerMessage.includes(keyword))
   }
 
   /**

@@ -27,7 +27,11 @@ export class UserModel {
             last_name = excluded.last_name,
             language_code = excluded.language_code,
             is_bot = excluded.is_bot,
-            settings = excluded.settings,
+            settings = CASE 
+              WHEN excluded.settings IS NOT NULL AND excluded.settings != '{}' 
+              THEN excluded.settings 
+              ELSE users.settings 
+            END,
             updated_at = CURRENT_TIMESTAMP
         `);
 
@@ -136,21 +140,15 @@ export class UserModel {
   updateUserState(telegramId: number, state: string, additionalData?: { flow_data?: string | null; ai_session_data?: string | null }): Promise<DatabaseResponse<any>> {
     return new Promise((resolve) => {
       try {
-        let query = 'UPDATE users SET settings = json_set(settings, "$.state", ?)';
-        const params: any[] = [state];
+        // Construir el objeto settings completo
+        const settings = {
+          state: state,
+          ...(additionalData?.flow_data !== undefined && { flow_data: additionalData.flow_data }),
+          ...(additionalData?.ai_session_data !== undefined && { ai_session_data: additionalData.ai_session_data })
+        };
         
-        if (additionalData?.flow_data !== undefined) {
-          query += ', settings = json_set(settings, "$.flow_data", ?)';
-          params.push(additionalData.flow_data || null);
-        }
-        
-        if (additionalData?.ai_session_data !== undefined) {
-          query += ', settings = json_set(settings, "$.ai_session_data", ?)';
-          params.push(additionalData.ai_session_data || null);
-        }
-        
-        query += ', updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?';
-        params.push(telegramId);
+        const query = 'UPDATE users SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?';
+        const params = [JSON.stringify(settings), telegramId];
         
         const stmt = this.db.prepare(query);
         stmt.run(...params, function(this: any, err: any) {

@@ -81,15 +81,15 @@ Puedes cancelar en cualquier momento escribiendo <b>/cancel</b>
             ctx.session.flow_data.guarantee_flow.step = 'waiting_invoice_photo';
         }
         await ctx.reply(`
-✅ **Número de factura registrado:** ${invoiceNumber}
+✅ Número de factura registrado: ${invoiceNumber}
 
-Ahora envía una **foto de la factura** para continuar.
+Ahora envía una foto de la factura para continuar.
     `.trim());
         return true;
     }
     async handleInvoicePhoto(ctx, messageType) {
         if (messageType !== 'photo' || !ctx.message || !('photo' in ctx.message)) {
-            await ctx.reply('❌ Por favor, envía una **foto de la factura**.');
+            await ctx.reply('❌ Por favor, envía una foto de la factura.');
             return false;
         }
         const photo = ctx.message.photo[ctx.message.photo.length - 1];
@@ -103,15 +103,15 @@ Ahora envía una **foto de la factura** para continuar.
             ctx.session.flow_data.guarantee_flow.step = 'waiting_product_photo';
         }
         await ctx.reply(`
-✅ **Foto de factura recibida**
+✅ Foto de factura recibida
 
-Ahora envía una **foto del producto** para continuar.
+Ahora envía una foto del producto para continuar.
     `.trim());
         return true;
     }
     async handleProductPhoto(ctx, messageType) {
         if (messageType !== 'photo' || !ctx.message || !('photo' in ctx.message)) {
-            await ctx.reply('❌ Por favor, envía una **foto del producto**.');
+            await ctx.reply('❌ Por favor, envía una foto del producto.');
             return false;
         }
         const photo = ctx.message.photo[ctx.message.photo.length - 1];
@@ -125,15 +125,15 @@ Ahora envía una **foto del producto** para continuar.
             ctx.session.flow_data.guarantee_flow.step = 'waiting_description';
         }
         await ctx.reply(`
-✅ **Foto del producto recibida**
+✅ Foto del producto recibida
 
-Finalmente, describe el **problema o motivo** de la garantía.
+Finalmente, describe el problema o motivo de la garantía.
     `.trim());
         return true;
     }
     async handleDescription(ctx, messageType) {
         if (messageType !== 'text' || !ctx.message || !('text' in ctx.message)) {
-            await ctx.reply('❌ Por favor, envía la **descripción del problema** como texto.');
+            await ctx.reply('❌ Por favor, envía la descripción del problema como texto.');
             return false;
         }
         const description = ctx.message.text.trim();
@@ -166,11 +166,11 @@ Finalmente, describe el **problema o motivo** de la garantía.
             }
             ctx.session = this.aiProcessor.resetSessionToIdle(ctx.session);
             await ctx.reply(`
-✅ **Garantía registrada exitosamente**
+✅ Garantía registrada exitosamente
 
-**Número de garantía:** #${result.data?.id}
-**Número de factura:** ${flowData.invoice_number}
-**Estado:** Pendiente de revisión
+Número de garantía: #${result.data?.id}
+Número de factura: ${flowData.invoice_number}
+Estado: Pendiente de revisión
 
 Tu solicitud de garantía ha sido registrada y será revisada por nuestro equipo. Te contactaremos pronto.
 
@@ -192,7 +192,7 @@ Tu solicitud de garantía ha sido registrada y será revisada por nuestro equipo
             }
             ctx.session = this.aiProcessor.resetSessionToIdle(ctx.session);
             await ctx.reply(`
-❌ **Flujo de garantía cancelado**
+❌ Flujo de garantía cancelado
 
 ¿En qué más puedo ayudarte?
       `.trim());

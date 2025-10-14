@@ -40,7 +40,8 @@ export class AIMessageHandler {
                 });
             }
             logger.info('🔍 Verificando flujo de garantía en handleTextMessage:', {
-                userId: ctx.user.id,
+                telegramId: ctx.from?.id,
+                dbUserId: ctx.user.id,
                 sessionState: ctx.session?.state,
                 flowData: ctx.session?.flow_data,
                 message: text
@@ -125,9 +126,13 @@ export class AIMessageHandler {
                 return;
             }
             const isCatalogQuery = this.isCatalogQuery(message);
+            const isGuaranteesQuery = this.isGuaranteesQuery(message);
             let loadingMessage = null;
             if (isCatalogQuery) {
                 loadingMessage = await ctx.reply('🔍 Estoy consultando nuestro catálogo de productos... ⏳');
+            }
+            else if (isGuaranteesQuery) {
+                loadingMessage = await ctx.reply('🔧 Estoy consultando tus garantías... ⏳');
             }
             const aiSessionData = ctx.session?.ai_session_data || {};
             const result = await this.aiProcessor.sendMessageToAI(message, ctx.user.id, ctx.chat?.id || 0, aiSessionData);
@@ -264,6 +269,30 @@ export class AIMessageHandler {
         ];
         const lowerMessage = message.toLowerCase();
         return catalogKeywords.some(keyword => lowerMessage.includes(keyword));
+    }
+    isGuaranteesQuery(message) {
+        const guaranteesKeywords = [
+            'garantías',
+            'garantias',
+            'garantía',
+            'garantia',
+            'mis garantías',
+            'mis garantias',
+            'estado de garantía',
+            'estado de garantia',
+            'revisar garantía',
+            'revisar garantia',
+            'consultar garantía',
+            'consultar garantia',
+            'ver garantías',
+            'ver garantias',
+            'listar garantías',
+            'listar garantias',
+            'mostrar garantías',
+            'mostrar garantias'
+        ];
+        const lowerMessage = message.toLowerCase();
+        return guaranteesKeywords.some(keyword => lowerMessage.includes(keyword));
     }
     async handleCancelCommand(ctx) {
         try {

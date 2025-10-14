@@ -118,9 +118,9 @@ Puedes cancelar en cualquier momento escribiendo <b>/cancel</b>
     }
 
     await ctx.reply(`
-✅ **Número de factura registrado:** ${invoiceNumber}
+✅ Número de factura registrado: ${invoiceNumber}
 
-Ahora envía una **foto de la factura** para continuar.
+Ahora envía una foto de la factura para continuar.
     `.trim())
 
     return true
@@ -131,7 +131,7 @@ Ahora envía una **foto de la factura** para continuar.
    */
   private async handleInvoicePhoto(ctx: BotContext, messageType: 'text' | 'photo'): Promise<boolean> {
     if (messageType !== 'photo' || !ctx.message || !('photo' in ctx.message)) {
-      await ctx.reply('❌ Por favor, envía una **foto de la factura**.')
+      await ctx.reply('❌ Por favor, envía una foto de la factura.')
       return false
     }
 
@@ -150,9 +150,9 @@ Ahora envía una **foto de la factura** para continuar.
     }
 
     await ctx.reply(`
-✅ **Foto de factura recibida**
+✅ Foto de factura recibida
 
-Ahora envía una **foto del producto** para continuar.
+Ahora envía una foto del producto para continuar.
     `.trim())
 
     return true
@@ -163,7 +163,7 @@ Ahora envía una **foto del producto** para continuar.
    */
   private async handleProductPhoto(ctx: BotContext, messageType: 'text' | 'photo'): Promise<boolean> {
     if (messageType !== 'photo' || !ctx.message || !('photo' in ctx.message)) {
-      await ctx.reply('❌ Por favor, envía una **foto del producto**.')
+      await ctx.reply('❌ Por favor, envía una foto del producto.')
       return false
     }
 
@@ -182,9 +182,9 @@ Ahora envía una **foto del producto** para continuar.
     }
 
     await ctx.reply(`
-✅ **Foto del producto recibida**
+✅ Foto del producto recibida
 
-Finalmente, describe el **problema o motivo** de la garantía.
+Finalmente, describe el problema o motivo de la garantía.
     `.trim())
 
     return true
@@ -195,7 +195,7 @@ Finalmente, describe el **problema o motivo** de la garantía.
    */
   private async handleDescription(ctx: BotContext, messageType: 'text' | 'photo'): Promise<boolean> {
     if (messageType !== 'text' || !ctx.message || !('text' in ctx.message)) {
-      await ctx.reply('❌ Por favor, envía la **descripción del problema** como texto.')
+      await ctx.reply('❌ Por favor, envía la descripción del problema como texto.')
       return false
     }
 
@@ -245,11 +245,11 @@ Finalmente, describe el **problema o motivo** de la garantía.
       ctx.session = this.aiProcessor.resetSessionToIdle(ctx.session)
 
       await ctx.reply(`
-✅ **Garantía registrada exitosamente**
+✅ Garantía registrada exitosamente
 
-**Número de garantía:** #${result.data?.id}
-**Número de factura:** ${flowData.invoice_number}
-**Estado:** Pendiente de revisión
+Número de garantía: #${result.data?.id}
+Número de factura: ${flowData.invoice_number}
+Estado: Pendiente de revisión
 
 Tu solicitud de garantía ha sido registrada y será revisada por nuestro equipo. Te contactaremos pronto.
 
@@ -279,7 +279,7 @@ Tu solicitud de garantía ha sido registrada y será revisada por nuestro equipo
       ctx.session = this.aiProcessor.resetSessionToIdle(ctx.session)
 
       await ctx.reply(`
-❌ **Flujo de garantía cancelado**
+❌ Flujo de garantía cancelado
 
 ¿En qué más puedo ayudarte?
       `.trim())
