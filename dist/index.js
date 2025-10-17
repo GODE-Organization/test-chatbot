@@ -186,50 +186,59 @@ class TelegramBot {
     }
 }
 async function main() {
+    const port = process.env['PORT'] ? parseInt(process.env['PORT']) : 3000;
+    logger.debug(`Iniciando servidor HTTP en puerto ${port}`);
+    const server = createServer((req, res) => {
+        logger.debug(`HTTP Request: ${req.method} ${req.url}`);
+        if (req.url === '/health' || req.url === '/') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'ok',
+                service: 'telegram-bot',
+                timestamp: new Date().toISOString()
+            }));
+        }
+        else {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Not found' }));
+        }
+    });
+    server.on('error', (error) => {
+        logger.bot.error('Error en servidor HTTP:', error);
+    });
+    server.listen(port, '0.0.0.0', () => {
+        logger.bot.success(`✅ Servidor HTTP iniciado en puerto ${port}`);
+    });
+    let bot = null;
+    process.once('SIGINT', () => {
+        server.close();
+        if (bot)
+            bot.shutdown(0, 'SIGINT');
+    });
+    process.once('SIGTERM', () => {
+        server.close();
+        if (bot)
+            bot.shutdown(0, 'SIGTERM');
+    });
+    process.on('uncaughtException', (error) => {
+        logger.error('Uncaught Exception:', error);
+        server.close();
+        if (bot)
+            bot.shutdown(1);
+    });
+    process.on('unhandledRejection', (reason, promise) => {
+        logger.error('Unhandled Rejection at:', { promise, reason });
+        server.close();
+        if (bot)
+            bot.shutdown(1);
+    });
     try {
-        const bot = new TelegramBot();
+        bot = new TelegramBot();
         await bot.initialize();
         await bot.start();
-        const port = process.env['PORT'] ? parseInt(process.env['PORT']) : 3000;
-        const server = createServer((req, res) => {
-            if (req.url === '/health' || req.url === '/') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    status: 'ok',
-                    service: 'telegram-bot',
-                    timestamp: new Date().toISOString()
-                }));
-            }
-            else {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Not found' }));
-            }
-        });
-        server.listen(port, () => {
-            logger.bot.success(`Servidor HTTP iniciado en puerto ${port}`);
-        });
-        process.once('SIGINT', () => {
-            server.close();
-            bot.shutdown(0, 'SIGINT');
-        });
-        process.once('SIGTERM', () => {
-            server.close();
-            bot.shutdown(0, 'SIGTERM');
-        });
-        process.on('uncaughtException', (error) => {
-            logger.error('Uncaught Exception:', error);
-            server.close();
-            bot.shutdown(1);
-        });
-        process.on('unhandledRejection', (reason, promise) => {
-            logger.error('Unhandled Rejection at:', { promise, reason });
-            server.close();
-            bot.shutdown(1);
-        });
     }
     catch (error) {
         logger.bot.error('Error fatal:', error);
-        process.exit(1);
     }
 }
 main().catch((error) => {
