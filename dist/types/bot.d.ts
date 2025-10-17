@@ -1,4 +1,5 @@
 import type { Context } from 'telegraf';
+import type { UserSessionData } from './ai-system.js';
 export interface BotContext extends Context {
     user?: {
         id: number;
@@ -7,10 +8,7 @@ export interface BotContext extends Context {
         last_name?: string;
         language_code?: string;
     };
-    session?: {
-        state?: string;
-        data?: Record<string, any>;
-    };
+    session?: UserSessionData;
 }
 export declare enum UserState {
     IDLE = "idle",

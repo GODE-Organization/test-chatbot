@@ -1,5 +1,6 @@
 import { logger } from '../../utils/logger.js';
 import { getMainMenuKeyboard, getSettingsKeyboard, getLanguageKeyboard, getNotificationKeyboard, getThemeKeyboard, getPrivacyKeyboard, getHelpKeyboard, getConfirmationKeyboard } from '../keyboards/main.js';
+import { AIMessageHandler } from './ai-message-handler.js';
 export async function handleSettingsCallbacks(ctx) {
     try {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery))
@@ -200,6 +201,19 @@ export async function handleHelpCallbacks(ctx) {
     }
     catch (error) {
         logger.error('Error manejando callback de ayuda:', error);
+        await ctx.answerCbQuery('❌ Error procesando solicitud');
+    }
+}
+export async function handleAICallbacks(ctx) {
+    try {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery))
+            return;
+        const data = ctx.callbackQuery.data;
+        const aiHandler = AIMessageHandler.getInstance();
+        await aiHandler.handleCallbackQuery(ctx);
+    }
+    catch (error) {
+        logger.error('Error manejando callback de IA:', error);
         await ctx.answerCbQuery('❌ Error procesando solicitud');
     }
 }

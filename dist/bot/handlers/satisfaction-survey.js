@@ -1,0 +1,186 @@
+import { logger } from '../../utils/logger.js';
+import { satisfactionSurveyModel, conversationModel } from '../../database/models.js';
+import { AIProcessor } from '../ai-integration/ai-processor.js';
+import { Markup } from 'telegraf';
+export class SatisfactionSurveyHandler {
+    static instance;
+    aiProcessor;
+    constructor() {
+        this.aiProcessor = AIProcessor.getInstance();
+    }
+    static getInstance() {
+        if (!SatisfactionSurveyHandler.instance) {
+            SatisfactionSurveyHandler.instance = new SatisfactionSurveyHandler();
+        }
+        return SatisfactionSurveyHandler.instance;
+    }
+    async sendSatisfactionSurvey(ctx, conversationId) {
+        try {
+            if (!ctx.user) {
+                return;
+            }
+            if (ctx.session) {
+                ctx.session = this.aiProcessor.updateSessionForSurvey(ctx.session, conversationId);
+            }
+            const message = `
+📝 Encuesta de Satisfacción
+
+¡Gracias por contactarnos! Tu opinión es muy importante para nosotros.
+
+¿Cómo calificarías tu experiencia con nuestro servicio de atención?
+
+Selecciona una opción:
+      `.trim();
+            const keyboard = Markup.inlineKeyboard([
+                [
+                    Markup.button.callback('😊 Excelente (5)', 'survey_5'),
+                    Markup.button.callback('😌 Muy bueno (4)', 'survey_4')
+                ],
+                [
+                    Markup.button.callback('😐 Bueno (3)', 'survey_3'),
+                    Markup.button.callback('😕 Regular (2)', 'survey_2')
+                ],
+                [
+                    Markup.button.callback('😞 Malo (1)', 'survey_1')
+                ]
+            ]);
+            await ctx.reply(message, keyboard);
+            logger.user.action(ctx.user.id, 'Encuesta de satisfacción enviada');
+        }
+        catch (error) {
+            logger.error('Error enviando encuesta de satisfacción:', error);
+        }
+    }
+    async processSurveyResponse(ctx, rating) {
+        try {
+            if (!ctx.user || !ctx.session?.flow_data?.survey_data) {
+                await ctx.reply('❌ Error procesando encuesta.');
+                return;
+            }
+            const surveyData = ctx.session.flow_data.survey_data;
+            const conversationId = surveyData.conversation_id;
+            const result = await satisfactionSurveyModel.createSurvey({
+                user_id: ctx.user.id,
+                rating: rating,
+                conversation_id: conversationId
+            });
+            if (!result.success) {
+                await ctx.reply('❌ Error registrando tu respuesta.');
+                return;
+            }
+            ctx.session = this.aiProcessor.resetSessionToIdle(ctx.session);
+            let responseMessage = '';
+            switch (rating) {
+                case 5:
+                    responseMessage = `
+😊 ¡Excelente!
+
+¡Nos alegra saber que tuviste una excelente experiencia! Tu calificación nos ayuda a seguir mejorando.
+
+¡Gracias por elegirnos! 🙏
+          `.trim();
+                    break;
+                case 4:
+                    responseMessage = `
+😌 ¡Muy bien!
+
+¡Gracias por tu calificación! Nos esforzamos por brindar el mejor servicio.
+
+¡Esperamos verte pronto! 😊
+          `.trim();
+                    break;
+                case 3:
+                    responseMessage = `
+😐 ¡Gracias!
+
+Apreciamos tu feedback. Trabajamos constantemente para mejorar nuestro servicio.
+
+¡Esperamos superar tus expectativas la próxima vez! 💪
+          `.trim();
+                    break;
+                case 2:
+                    responseMessage = `
+😕 Entendemos tu preocupación
+
+Lamentamos que tu experiencia no haya sido la esperada. Tu feedback es valioso para nosotros.
+
+¿Te gustaría que un supervisor revise tu caso? Escribe /contact para más opciones.
+          `.trim();
+                    break;
+                case 1:
+                    responseMessage = `
+😞 Lamentamos mucho tu experiencia
+
+Nos disculpamos sinceramente. Tu feedback es crucial para mejorar nuestro servicio.
+
+Por favor, contacta a un supervisor escribiendo /contact para que podamos resolver tu situación.
+          `.trim();
+                    break;
+                default:
+                    responseMessage = `
+✅ ¡Gracias por tu feedback!
+
+Tu opinión es muy importante para nosotros.
+          `.trim();
+            }
+            await ctx.reply(responseMessage);
+            logger.user.action(ctx.user.id, `Encuesta completada - Rating: ${rating}`);
+        }
+        catch (error) {
+            logger.error('Error procesando respuesta de encuesta:', error);
+            await ctx.reply('❌ Ocurrió un error procesando tu respuesta.');
+        }
+    }
+    async handleSurveyCallback(ctx, callbackData) {
+        try {
+            logger.info('📊 Procesando callback de encuesta:', {
+                userId: ctx.user?.id,
+                callbackData,
+                sessionState: ctx.session?.state,
+                flowData: ctx.session?.flow_data
+            });
+            if (!callbackData.startsWith('survey_')) {
+                logger.warn('❌ Callback no es de encuesta:', callbackData);
+                return false;
+            }
+            const rating = parseInt(callbackData.replace('survey_', ''));
+            if (isNaN(rating) || rating < 1 || rating > 5) {
+                logger.warn('❌ Calificación inválida:', rating);
+                await ctx.answerCbQuery('❌ Calificación inválida');
+                return false;
+            }
+            logger.info('✅ Calificación válida recibida:', rating);
+            await this.processSurveyResponse(ctx, rating);
+            await ctx.answerCbQuery('✅ ¡Gracias por tu calificación!');
+            logger.info('✅ Callback de encuesta procesado exitosamente');
+            return true;
+        }
+        catch (error) {
+            logger.error('Error manejando callback de encuesta:', error);
+            await ctx.answerCbQuery('❌ Error procesando respuesta');
+            return false;
+        }
+    }
+    isWaitingForSurvey(session) {
+        return session?.state === 'survey_waiting' &&
+            session?.flow_data?.survey_data?.waiting_for_rating === true;
+    }
+    async getSurveyStats() {
+        try {
+            return {
+                total: 0,
+                average: 0,
+                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+            };
+        }
+        catch (error) {
+            logger.error('Error obteniendo estadísticas de encuestas:', error);
+            return {
+                total: 0,
+                average: 0,
+                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+            };
+        }
+    }
+}
+//# sourceMappingURL=satisfaction-survey.js.map

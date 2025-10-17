@@ -6,6 +6,7 @@ import { connectDatabase, closeDatabase } from './database/connection.js';
 import { setupMiddleware } from './bot/middleware/index.js';
 import { setupHandlers } from './bot/handlers/index.js';
 import { registerCleanupFunction, setupGracefulShutdown } from './utils/graceful-shutdown.js';
+import { ConversationCleanupService } from './bot/timeout/index.js';
 import 'dotenv/config';
 validateConfig();
 class TelegramBot {
@@ -76,6 +77,16 @@ class TelegramBot {
             }
             catch (error) {
                 logger.bot.error('Error configurando handlers:', error);
+                throw error;
+            }
+            logger.debug('Configurando servicio de limpieza...');
+            try {
+                const cleanupService = ConversationCleanupService.getInstance();
+                cleanupService.startCleanupService(5);
+                logger.bot.success('Servicio de limpieza configurado');
+            }
+            catch (error) {
+                logger.bot.error('Error configurando servicio de limpieza:', error);
                 throw error;
             }
             logger.debug('Configurando cierre elegante...');

@@ -1,4 +1,5 @@
 import type { Context } from 'telegraf'
+import type { UserSessionData, BotFlowState } from './ai-system.js'
 
 /**
  * Contexto personalizado del bot que extiende el contexto de Telegraf
@@ -12,10 +13,7 @@ export interface BotContext extends Context {
     last_name?: string
     language_code?: string
   }
-  session?: {
-    state?: string
-    data?: Record<string, any>
-  }
+  session?: UserSessionData
 }
 
 /**

@@ -10,7 +10,9 @@
     "start": "node dist/index.js",
     "clean": "rimraf dist",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "seed:products": "tsx src/database/seeders/products-seeder.ts",
+    "seed:products:force": "tsx src/database/seeders/products-seeder.ts --force"
   },
   "keywords": [
     "telegram",
@@ -22,6 +24,9 @@
   "author": "GODE",
   "license": "MIT",
   "dependencies": {
+    "@google/genai": "^1.24.0",
+    "@google/generative-ai": "^0.24.1",
+    "@types/sqlite3": "^3.1.11",
     "dotenv": "^16.3.1",
     "joi": "^17.11.0",
     "sqlite3": "^5.1.7",

@@ -10,6 +10,7 @@ import {
   getHelpKeyboard,
   getConfirmationKeyboard
 } from '../keyboards/main.js'
+import { AIMessageHandler } from './ai-message-handler.js'
 
 /**
  * Manejar callbacks de configuración
@@ -298,6 +299,25 @@ export async function handleHelpCallbacks(ctx: BotContext) {
 
   } catch (error) {
     logger.error('Error manejando callback de ayuda:', error)
+    await ctx.answerCbQuery('❌ Error procesando solicitud')
+  }
+}
+
+/**
+ * Manejar callbacks de IA (encuestas, etc.)
+ */
+export async function handleAICallbacks(ctx: BotContext) {
+  try {
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return
+
+    const data = ctx.callbackQuery.data
+    const aiHandler = AIMessageHandler.getInstance()
+    
+    // Procesar con el handler de IA
+    await aiHandler.handleCallbackQuery(ctx)
+
+  } catch (error) {
+    logger.error('Error manejando callback de IA:', error)
     await ctx.answerCbQuery('❌ Error procesando solicitud')
   }
 }

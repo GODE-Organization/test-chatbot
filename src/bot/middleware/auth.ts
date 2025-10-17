@@ -36,11 +36,7 @@ export async function authMiddleware(ctx: BotContext, next: () => Promise<void>)
         ...(userResult.data.language_code && { language_code: userResult.data.language_code })
       }
 
-      // Agregar sesión básica
-      ctx.session = {
-        state: 'idle',
-        data: userResult.data.settings ? (typeof userResult.data.settings === 'string' ? JSON.parse(userResult.data.settings) : userResult.data.settings) : {}
-      }
+      // La sesión se maneja en el middleware de sesión
 
       logger.user.action(ctx.from.id, `Usuario autenticado: ${userResult.data.first_name || userResult.data.username || 'Sin nombre'}`)
     } else {
