@@ -1,0 +1,11 @@
+services:
+  - type: worker
+    name: telegram-bot
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BOT_USE_WEBHOOK
+        value: false
