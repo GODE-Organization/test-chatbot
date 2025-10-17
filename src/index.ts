@@ -7,6 +7,7 @@
 
 import { Telegraf } from 'telegraf'
 import type { Chat } from 'telegraf/types'
+import { createServer } from 'http'
 
 import { logger } from './utils/logger.js'
 import { appConfig, validateConfig } from './config/settings.js'
@@ -235,22 +236,46 @@ async function main(): Promise<void> {
     await bot.initialize()
     await bot.start()
 
+    // Crear servidor HTTP simple para que Render detecte el puerto
+    const port = process.env['PORT'] ? parseInt(process.env['PORT']) : 3000
+    const server = createServer((req, res) => {
+      if (req.url === '/health' || req.url === '/') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ 
+          status: 'ok', 
+          service: 'telegram-bot',
+          timestamp: new Date().toISOString()
+        }))
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Not found' }))
+      }
+    })
+
+    server.listen(port, () => {
+      logger.bot.success(`Servidor HTTP iniciado en puerto ${port}`)
+    })
+
     // Manejar señales de terminación
     process.once('SIGINT', () => {
+      server.close()
       bot.shutdown(0, 'SIGINT')
     })
     process.once('SIGTERM', () => {
+      server.close()
       bot.shutdown(0, 'SIGTERM')
     })
 
     // Manejar errores no capturados
     process.on('uncaughtException', (error) => {
       logger.error('Uncaught Exception:', error)
+      server.close()
       bot.shutdown(1)
     })
 
     process.on('unhandledRejection', (reason, promise) => {
       logger.error('Unhandled Rejection at:', { promise, reason })
+      server.close()
       bot.shutdown(1)
     })
 
