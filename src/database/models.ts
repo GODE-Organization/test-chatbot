@@ -1043,10 +1043,8 @@ export class ConversationModel {
 }
 
 export class ScheduleModel {
-  private db: Sqlite3Database
-
-  constructor() {
-    this.db = getDatabase()
+  private get db() {
+    return getDatabase();
   }
 
   /**

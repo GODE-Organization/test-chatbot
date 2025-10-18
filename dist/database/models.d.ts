@@ -132,8 +132,7 @@ export declare class ConversationModel {
     updateConversationData(conversationId: number, aiSessionData: string): Promise<DatabaseResponse<any>>;
 }
 export declare class ScheduleModel {
-    private db;
-    constructor();
+    private get db();
     getAllSchedules(): Promise<{
         success: boolean;
         data?: any[];

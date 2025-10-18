@@ -6,6 +6,7 @@
  * Este script popula la base de datos con los horarios de atención de Tecno Express
  */
 
+import { connectDatabase } from '../connection.js'
 import { scheduleModel } from '../models.js'
 import { logger } from '../../utils/logger.js'
 
@@ -27,7 +28,9 @@ const schedulesData = [
 
 async function seedSchedules(): Promise<void> {
   try {
-    logger.info('🌱 Iniciando seeder de horarios...')
+    // Conectar a la base de datos primero
+    await connectDatabase()
+    console.log('🌱 Iniciando seeder de horarios...')
 
     // Verificar si ya existen horarios
     const existingSchedules = await scheduleModel.getAllSchedules()
@@ -36,13 +39,13 @@ async function seedSchedules(): Promise<void> {
       const forceFlag = process.argv.includes('--force')
       
       if (!forceFlag) {
-        logger.warn('⚠️  Ya existen horarios en la base de datos')
-        logger.info('💡 Usa --force para sobrescribir los horarios existentes')
-        logger.info('   Ejemplo: npm run seed:schedules:force')
+        console.log('⚠️  Ya existen horarios en la base de datos')
+        console.log('💡 Usa --force para sobrescribir los horarios existentes')
+        console.log('   Ejemplo: npm run seed:schedules:force')
         return
       }
       
-      logger.info('🔄 Modo force activado, sobrescribiendo horarios...')
+      console.log('🔄 Modo force activado, sobrescribiendo horarios...')
     }
 
     // Crear horarios
@@ -55,31 +58,31 @@ async function seedSchedules(): Promise<void> {
         
         if (result.success) {
           createdCount++
-          logger.debug(`✅ Horario creado: ${getDayName(schedule.day_of_week)} ${schedule.open_time}-${schedule.close_time}`)
+          console.log(`✅ Horario creado: ${getDayName(schedule.day_of_week)} ${schedule.open_time}-${schedule.close_time}`)
         } else {
           errorCount++
-          logger.error(`❌ Error creando horario: ${result.error}`)
+          console.log(`❌ Error creando horario: ${result.error}`)
         }
       } catch (error) {
         errorCount++
-        logger.error(`❌ Error inesperado creando horario:`, error)
+        console.log(`❌ Error inesperado creando horario:`, error)
       }
     }
 
     // Resumen
-    logger.info('📊 Resumen del seeder de horarios:')
-    logger.info(`   ✅ Horarios creados: ${createdCount}`)
-    logger.info(`   ❌ Errores: ${errorCount}`)
-    logger.info(`   📅 Total de días: ${schedulesData.length}`)
+    console.log('📊 Resumen del seeder de horarios:')
+    console.log(`   ✅ Horarios creados: ${createdCount}`)
+    console.log(`   ❌ Errores: ${errorCount}`)
+    console.log(`   📅 Total de días: ${schedulesData.length}`)
 
     if (createdCount > 0) {
-      logger.success('🎉 Seeder de horarios completado exitosamente')
+      console.log('🎉 Seeder de horarios completado exitosamente')
     } else {
-      logger.warn('⚠️  No se crearon horarios nuevos')
+      console.log('⚠️  No se crearon horarios nuevos')
     }
 
   } catch (error) {
-    logger.error('💥 Error fatal en seeder de horarios:', error)
+    console.log('💥 Error fatal en seeder de horarios:', error)
     process.exit(1)
   }
 }
@@ -89,17 +92,15 @@ function getDayName(dayOfWeek: number): string {
   return dayNames[dayOfWeek] || 'Día desconocido'
 }
 
-// Ejecutar seeder si se llama directamente
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedSchedules()
-    .then(() => {
-      logger.info('✅ Seeder de horarios finalizado')
-      process.exit(0)
-    })
-    .catch((error) => {
-      logger.error('💥 Error ejecutando seeder de horarios:', error)
-      process.exit(1)
-    })
-}
+// Ejecutar seeder
+seedSchedules()
+  .then(() => {
+    console.log('✅ Seeder de horarios finalizado')
+    process.exit(0)
+  })
+  .catch((error) => {
+    console.log('💥 Error ejecutando seeder de horarios:', error)
+    process.exit(1)
+  })
 
 export { seedSchedules }

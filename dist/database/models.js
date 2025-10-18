@@ -838,9 +838,8 @@ export class ConversationModel {
     }
 }
 export class ScheduleModel {
-    db;
-    constructor() {
-        this.db = getDatabase();
+    get db() {
+        return getDatabase();
     }
     async getAllSchedules() {
         return new Promise((resolve) => {
