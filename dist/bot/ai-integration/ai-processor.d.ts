@@ -1,4 +1,4 @@
-import type { AIExternalResponse, MessageProcessingResult, UserSessionData } from '../../types/ai-system.js';
+import type { AIExternalResponse, AICommand, AICommandResponse, MessageProcessingResult, UserSessionData } from '../../types/ai-system.js';
 export declare class AIProcessor {
     private static instance;
     private geminiAdapter;
@@ -7,7 +7,10 @@ export declare class AIProcessor {
     sendMessageToAI(userMessage: string, userId: number, chatId: number, sessionData?: Record<string, any>): Promise<MessageProcessingResult>;
     processAIResponse(aiResponse: AIExternalResponse, userId: number, chatId: number): Promise<MessageProcessingResult>;
     private validateAIResponse;
-    private executeAIAction;
+    executeAIAction(action: {
+        command: AICommand;
+        parameters: any;
+    }, userId: number, chatId: number): Promise<AICommandResponse>;
     private handleConsultCatalog;
     private handleConsultGuarantees;
     private handleRegisterGuarantee;

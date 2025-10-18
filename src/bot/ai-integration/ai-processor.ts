@@ -220,7 +220,7 @@ export class AIProcessor {
   /**
    * Ejecuta una acción específica de la IA
    */
-  private async executeAIAction(
+  public async executeAIAction(
     action: { command: AICommand; parameters: any },
     userId: number,
     chatId: number
@@ -399,26 +399,18 @@ export class AIProcessor {
    */
   private async handleSendGeolocation(): Promise<AICommandResponse> {
     try {
-      const result = await storeConfigModel.getStoreConfig()
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: result.error || 'Error desconocido'
-        }
-      }
-
-      if (!result.data) {
-        return {
-          success: false,
-          error: 'No se encontró configuración de la tienda'
-        }
+      // Coordenadas específicas de Tecno Express en Porlamar, Nueva Esparta
+      const locationData = {
+        latitude: 11.051815957943532,
+        longitude: -63.900847183788,
+        address: 'Porlamar, Nueva Esparta, Venezuela',
+        store_name: 'Tecno Express'
       }
 
       return {
         success: true,
-        data: result.data,
-        message: 'Información de ubicación obtenida'
+        data: locationData,
+        message: 'Ubicación de Tecno Express obtenida'
       }
     } catch (error) {
       return {

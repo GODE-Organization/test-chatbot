@@ -1,6 +1,7 @@
 import { getDatabase } from './connection.js';
 import type { DatabaseResponse } from '../types/bot.js';
 import { CurrencyConverter } from '../utils/currency-converter.js';
+import type { Database as Sqlite3Database } from 'sqlite3';
 
 export class UserModel {
   private get db() {
@@ -774,38 +775,6 @@ export class GuaranteeModel {
   }
 }
 
-export class ScheduleModel {
-  private get db() {
-    return getDatabase();
-  }
-
-  getAllSchedules(): Promise<DatabaseResponse<any[]>> {
-    return new Promise((resolve) => {
-      try {
-        const stmt = this.db.prepare('SELECT * FROM schedules WHERE is_active = 1 ORDER BY day_of_week');
-        stmt.all((err: any, schedules: any[]) => {
-          if (err) {
-            resolve({
-              success: false,
-              error: err.message
-            });
-            return;
-          }
-
-          resolve({
-            success: true,
-            data: schedules || []
-          });
-        });
-      } catch (error) {
-        resolve({
-          success: false,
-          error: error instanceof Error ? error.message : 'Error desconocido'
-        });
-      }
-    });
-  }
-}
 
 export class StoreConfigModel {
   private get db() {
@@ -1070,6 +1039,143 @@ export class ConversationModel {
         });
       }
     });
+  }
+}
+
+export class ScheduleModel {
+  private db: Sqlite3Database
+
+  constructor() {
+    this.db = getDatabase()
+  }
+
+  /**
+   * Obtiene todos los horarios de atención
+   */
+  public async getAllSchedules(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    return new Promise((resolve) => {
+      try {
+        const stmt = this.db.prepare(`
+          SELECT * FROM schedules 
+          WHERE is_active = 1
+          ORDER BY day_of_week, open_time
+        `)
+        
+        stmt.all((err: any, schedules: any[]) => {
+          if (err) {
+            resolve({
+              success: false,
+              error: err.message
+            })
+            return
+          }
+          
+          // Mapear los datos para incluir nombres de días
+          const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+          const mappedSchedules = schedules.map((schedule: any) => ({
+            ...schedule,
+            day_name: dayNames[schedule.day_of_week] || 'Día desconocido'
+          }))
+          
+          resolve({
+            success: true,
+            data: mappedSchedules
+          })
+        })
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error obteniendo horarios'
+        })
+      }
+    })
+  }
+
+  /**
+   * Obtiene horarios por día de la semana
+   */
+  public async getSchedulesByDay(dayOfWeek: number): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    return new Promise((resolve) => {
+      try {
+        const stmt = this.db.prepare(`
+          SELECT * FROM schedules 
+          WHERE day_of_week = ? AND is_active = 1
+          ORDER BY open_time
+        `)
+        
+        stmt.all(dayOfWeek, (err: any, schedules: any[]) => {
+          if (err) {
+            resolve({
+              success: false,
+              error: err.message
+            })
+            return
+          }
+          
+          // Mapear los datos para incluir nombres de días
+          const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+          const mappedSchedules = schedules.map((schedule: any) => ({
+            ...schedule,
+            day_name: dayNames[schedule.day_of_week] || 'Día desconocido'
+          }))
+          
+          resolve({
+            success: true,
+            data: mappedSchedules
+          })
+        })
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error obteniendo horarios por día'
+        })
+      }
+    })
+  }
+
+  /**
+   * Crea un nuevo horario
+   */
+  public async createSchedule(schedule: {
+    day_of_week: number
+    open_time: string
+    close_time: string
+    is_active?: boolean
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      try {
+        const stmt = this.db.prepare(`
+          INSERT INTO schedules (day_of_week, open_time, close_time, is_active)
+          VALUES (?, ?, ?, ?)
+        `)
+        
+        stmt.run(
+          schedule.day_of_week,
+          schedule.open_time,
+          schedule.close_time,
+          schedule.is_active !== false ? 1 : 0,
+          function(this: any, err: any) {
+            if (err) {
+              resolve({
+                success: false,
+                error: err.message
+              })
+              return
+            }
+            
+            resolve({
+              success: true,
+              data: { id: this.lastID }
+            })
+          }
+        )
+      } catch (error) {
+        resolve({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error creando horario'
+        })
+      }
+    })
   }
 }
 

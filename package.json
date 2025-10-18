@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "build:deploy": "tsc && npm run seed:products:force",
+    "build:deploy": "tsc && npm run seed:products:force && npm run seed:schedules:force",
     "start": "node dist/index.js",
     "clean": "rimraf dist",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "seed:products": "tsx src/database/seeders/products-seeder.ts",
-    "seed:products:force": "tsx src/database/seeders/products-seeder.ts --force"
+    "seed:products:force": "tsx src/database/seeders/products-seeder.ts --force",
+    "seed:schedules": "tsx src/database/seeders/schedules-seeder.ts",
+    "seed:schedules:force": "tsx src/database/seeders/schedules-seeder.ts --force"
   },
   "keywords": [
     "telegram",

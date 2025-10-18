@@ -19,5 +19,7 @@ export declare class AIMessageHandler {
     private isGuaranteesQuery;
     handleCancelCommand(ctx: BotContext): Promise<void>;
     private sanitizeMarkdownText;
+    private handleConsultSchedule;
+    private handleSendGeolocation;
 }
 //# sourceMappingURL=ai-message-handler.d.ts.map

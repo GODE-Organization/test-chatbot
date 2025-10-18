@@ -23,6 +23,7 @@ export const logger = {
     warn: (message, meta) => winstonLogger.warn(message, meta),
     info: (message, meta) => winstonLogger.info(message, meta),
     debug: (message, meta) => winstonLogger.debug(message, meta),
+    success: (message, meta) => winstonLogger.info(`✅ ${message}`, meta),
     bot: {
         start: (message) => winstonLogger.info(`🚀 ${message}`),
         stop: (message) => winstonLogger.info(`🛑 ${message}`),

@@ -617,37 +617,6 @@ export class GuaranteeModel {
         });
     }
 }
-export class ScheduleModel {
-    get db() {
-        return getDatabase();
-    }
-    getAllSchedules() {
-        return new Promise((resolve) => {
-            try {
-                const stmt = this.db.prepare('SELECT * FROM schedules WHERE is_active = 1 ORDER BY day_of_week');
-                stmt.all((err, schedules) => {
-                    if (err) {
-                        resolve({
-                            success: false,
-                            error: err.message
-                        });
-                        return;
-                    }
-                    resolve({
-                        success: true,
-                        data: schedules || []
-                    });
-                });
-            }
-            catch (error) {
-                resolve({
-                    success: false,
-                    error: error instanceof Error ? error.message : 'Error desconocido'
-                });
-            }
-        });
-    }
-}
 export class StoreConfigModel {
     get db() {
         return getDatabase();
@@ -863,6 +832,111 @@ export class ConversationModel {
                 resolve({
                     success: false,
                     error: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
+        });
+    }
+}
+export class ScheduleModel {
+    db;
+    constructor() {
+        this.db = getDatabase();
+    }
+    async getAllSchedules() {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          SELECT * FROM schedules 
+          WHERE is_active = 1
+          ORDER BY day_of_week, open_time
+        `);
+                stmt.all((err, schedules) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    const mappedSchedules = schedules.map((schedule) => ({
+                        ...schedule,
+                        day_name: dayNames[schedule.day_of_week] || 'Día desconocido'
+                    }));
+                    resolve({
+                        success: true,
+                        data: mappedSchedules
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error obteniendo horarios'
+                });
+            }
+        });
+    }
+    async getSchedulesByDay(dayOfWeek) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          SELECT * FROM schedules 
+          WHERE day_of_week = ? AND is_active = 1
+          ORDER BY open_time
+        `);
+                stmt.all(dayOfWeek, (err, schedules) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    const mappedSchedules = schedules.map((schedule) => ({
+                        ...schedule,
+                        day_name: dayNames[schedule.day_of_week] || 'Día desconocido'
+                    }));
+                    resolve({
+                        success: true,
+                        data: mappedSchedules
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error obteniendo horarios por día'
+                });
+            }
+        });
+    }
+    async createSchedule(schedule) {
+        return new Promise((resolve) => {
+            try {
+                const stmt = this.db.prepare(`
+          INSERT INTO schedules (day_of_week, open_time, close_time, is_active)
+          VALUES (?, ?, ?, ?)
+        `);
+                stmt.run(schedule.day_of_week, schedule.open_time, schedule.close_time, schedule.is_active !== false ? 1 : 0, function (err) {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+                    resolve({
+                        success: true,
+                        data: { id: this.lastID }
+                    });
+                });
+            }
+            catch (error) {
+                resolve({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Error creando horario'
                 });
             }
         });

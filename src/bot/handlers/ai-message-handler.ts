@@ -325,6 +325,14 @@ export class AIMessageHandler {
             await this.handleEndConversation(ctx)
             break
           
+          case 'CONSULT_SCHEDULE':
+            await this.handleConsultSchedule(ctx)
+            break
+          
+          case 'SEND_GEOLOCATION':
+            await this.handleSendGeolocation(ctx)
+            break
+          
           // Otros comandos se procesan automáticamente en AIProcessor
           default:
             break
@@ -497,5 +505,114 @@ export class AIMessageHandler {
       // Limpiar caracteres problemáticos
       .replace(/[\u200B-\u200D\uFEFF]/g, '') // Caracteres de control invisibles
       .trim()
+  }
+
+  /**
+   * Maneja la consulta de horarios
+   */
+  private async handleConsultSchedule(ctx: BotContext): Promise<void> {
+    try {
+      if (!ctx.user) return
+
+      // Obtener horarios desde el AI Processor
+      const result = await this.aiProcessor.executeAIAction(
+        { command: 'CONSULT_SCHEDULE', parameters: {} },
+        ctx.user.id,
+        ctx.chat?.id || 0
+      )
+
+      if (!result.success) {
+        await ctx.reply('❌ Error obteniendo horarios. Por favor, intenta de nuevo.')
+        return
+      }
+
+      // Formatear horarios para mostrar al usuario
+      const schedules = result.data || []
+      if (schedules.length === 0) {
+        await ctx.reply('📅 No hay horarios disponibles en este momento.')
+        return
+      }
+
+      let message = '🕒 *Horarios de Atención - Tecno Express*\n\n'
+      
+      // Agrupar por día
+      const schedulesByDay = schedules.reduce((acc: any, schedule: any) => {
+        const dayName = schedule.day_name || 'Día desconocido'
+        if (!acc[dayName]) {
+          acc[dayName] = []
+        }
+        acc[dayName].push(schedule)
+        return acc
+      }, {})
+
+      // Mostrar horarios por día
+      Object.entries(schedulesByDay).forEach(([dayName, daySchedules]: [string, any]) => {
+        if (daySchedules.length > 0) {
+          const firstSchedule = daySchedules[0]
+          if (firstSchedule.is_active) {
+            message += `*${dayName}:* ${firstSchedule.open_time} - ${firstSchedule.close_time}\n`
+          } else {
+            message += `*${dayName}:* Cerrado\n`
+          }
+        }
+      })
+
+      message += '\n📍 *Ubicación:* Porlamar, Nueva Esparta, Venezuela\n'
+      message += '📞 *Teléfono:* +58 426-1234567\n'
+      message += '✉️ *Email:* info@tecnoexpress.com'
+
+      await ctx.reply(message, { parse_mode: 'Markdown' })
+
+    } catch (error) {
+      logger.error('Error manejando consulta de horarios:', error)
+      await ctx.reply('❌ Error obteniendo horarios. Por favor, intenta de nuevo.')
+    }
+  }
+
+  /**
+   * Maneja el envío de geolocalización
+   */
+  private async handleSendGeolocation(ctx: BotContext): Promise<void> {
+    try {
+      if (!ctx.user) return
+
+      // Obtener datos de ubicación desde el AI Processor
+      const result = await this.aiProcessor.executeAIAction(
+        { command: 'SEND_GEOLOCATION', parameters: {} },
+        ctx.user.id,
+        ctx.chat?.id || 0
+      )
+
+      if (!result.success) {
+        await ctx.reply('❌ Error obteniendo ubicación. Por favor, intenta de nuevo.')
+        return
+      }
+
+      const locationData = result.data
+      if (!locationData) {
+        await ctx.reply('❌ No se encontró información de ubicación.')
+        return
+      }
+
+      // Enviar ubicación real de Telegram
+      await ctx.replyWithLocation(
+        locationData.latitude,
+        locationData.longitude
+      )
+
+      // Enviar información adicional
+      const message = `📍 *${locationData.store_name}*\n\n` +
+        `🏠 *Dirección:* ${locationData.address}\n` +
+        `📞 *Teléfono:* +58 426-1234567\n` +
+        `✉️ *Email:* info@tecnoexpress.com\n` +
+        `🌐 *Sitio web:* https://tecnoexpress.com\n\n` +
+        `¡Te esperamos en nuestra tienda! 😊`
+
+      await ctx.reply(message, { parse_mode: 'Markdown' })
+
+    } catch (error) {
+      logger.error('Error manejando envío de geolocalización:', error)
+      await ctx.reply('❌ Error enviando ubicación. Por favor, intenta de nuevo.')
+    }
   }
 }

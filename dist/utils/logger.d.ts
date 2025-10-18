@@ -4,6 +4,7 @@ export declare const logger: {
     warn: (message: string, meta?: any) => winston.Logger;
     info: (message: string, meta?: any) => winston.Logger;
     debug: (message: string, meta?: any) => winston.Logger;
+    success: (message: string, meta?: any) => winston.Logger;
     bot: {
         start: (message: string) => winston.Logger;
         stop: (message: string) => winston.Logger;

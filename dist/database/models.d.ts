@@ -94,10 +94,6 @@ export declare class GuaranteeModel {
         lastInsertRowid: number;
     }>>;
 }
-export declare class ScheduleModel {
-    private get db();
-    getAllSchedules(): Promise<DatabaseResponse<any[]>>;
-}
 export declare class StoreConfigModel {
     private get db();
     getStoreConfig(): Promise<DatabaseResponse<any>>;
@@ -134,6 +130,30 @@ export declare class ConversationModel {
     getActiveConversation(userId: number): Promise<DatabaseResponse<any>>;
     endConversation(conversationId: number): Promise<DatabaseResponse<any>>;
     updateConversationData(conversationId: number, aiSessionData: string): Promise<DatabaseResponse<any>>;
+}
+export declare class ScheduleModel {
+    private db;
+    constructor();
+    getAllSchedules(): Promise<{
+        success: boolean;
+        data?: any[];
+        error?: string;
+    }>;
+    getSchedulesByDay(dayOfWeek: number): Promise<{
+        success: boolean;
+        data?: any[];
+        error?: string;
+    }>;
+    createSchedule(schedule: {
+        day_of_week: number;
+        open_time: string;
+        close_time: string;
+        is_active?: boolean;
+    }): Promise<{
+        success: boolean;
+        data?: any;
+        error?: string;
+    }>;
 }
 export declare const userModel: UserModel;
 export declare const chatModel: ChatModel;

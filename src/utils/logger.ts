@@ -44,6 +44,7 @@ export const logger = {
   warn: (message: string, meta?: any) => winstonLogger.warn(message, meta),
   info: (message: string, meta?: any) => winstonLogger.info(message, meta),
   debug: (message: string, meta?: any) => winstonLogger.debug(message, meta),
+  success: (message: string, meta?: any) => winstonLogger.info(`✅ ${message}`, meta),
   
   // Métodos específicos para el bot
   bot: {

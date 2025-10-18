@@ -138,18 +138,25 @@ export class ConversationTimeoutManager {
    */
   private async sendTimeoutSurvey(userId: number, conversationId: number, userInfo: any): Promise<void> {
     try {
-      // Crear contexto simulado para enviar la encuesta
-      const mockContext = {
+      // Obtener la instancia del bot para enviar mensajes reales
+      const { TelegramBot } = await import('../../index.js')
+      const bot = TelegramBot.getInstance()
+      
+      // Crear contexto real con el bot
+      const realContext = {
         user: userInfo,
         reply: async (message: string, options?: any) => {
-          // Aquí deberías enviar el mensaje real al usuario
-          // Por ahora solo lo logueamos
-          logger.info(`Enviando encuesta a usuario ${userId}: ${message}`)
+          try {
+            await bot.bot.telegram.sendMessage(userId, message, options)
+            logger.info(`✅ Encuesta enviada a usuario ${userId}: ${message}`)
+          } catch (error) {
+            logger.error(`❌ Error enviando encuesta a usuario ${userId}:`, error)
+          }
         }
       }
 
       // Enviar encuesta usando el handler
-      await this.surveyHandler.sendSatisfactionSurvey(mockContext as any, conversationId)
+      await this.surveyHandler.sendSatisfactionSurvey(realContext as any, conversationId)
 
     } catch (error) {
       logger.error('Error enviando encuesta por timeout:', error)
